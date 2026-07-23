@@ -11,6 +11,8 @@ requires-python = ">=3.9"
 license = { file = "LICENSE" }
 dependencies = [
     "pandas",
+    "pyarrow",
+    "requests",
 ]
 
 [tool.setuptools.packages.find]
