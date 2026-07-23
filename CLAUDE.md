@@ -10,3 +10,7 @@ Guidance for Claude Code when working in this repository.
 ## Deletions
 
 - Do not delete anything unless asked. Verify before you do any deletion.
+
+## Workflow
+
+- Take all actions necessary to merge changes into main.
