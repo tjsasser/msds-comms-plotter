@@ -6,3 +6,11 @@ Guidance for Claude Code when working in this repository.
 
 - Use **matplotlib** only for visualizations. Do not use other plotting
   libraries (e.g. seaborn, plotly, bokeh, altair) for generating plots.
+
+## Deletions
+
+- Do not delete anything unless asked. Verify before you do any deletion.
+
+## Workflow
+
+- Take all actions necessary to merge changes into main.
