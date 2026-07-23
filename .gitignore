@@ -220,6 +220,7 @@ __marimo__/
 # Never commit CSV data files
 *.csv
 
-# Raw data dumps (re-fetchable via src/msds_comms_plotter/worldcup.py)
+# Raw data: ignore the loose JSON dump, but keep the compact xz archive.
 data/raw/*
 !data/raw/.gitkeep
+!data/raw/wc2022_raw.tar.xz

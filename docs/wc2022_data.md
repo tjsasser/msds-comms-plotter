@@ -12,7 +12,17 @@ python -m msds_comms_plotter.worldcup
 ```
 
 This downloads the raw JSON to `data/raw/statsbomb/` (cached, ~193 MB, git-ignored)
-and writes the processed tables to `data/processed/`:
+and writes the processed tables to `data/processed/`.
+
+The raw event data is also committed in compact form as
+`data/raw/wc2022_raw.tar.xz` (~12 MB; minified JSON, solid `xz -9`). To restore
+the loose JSON tree the pipeline reads from:
+
+```bash
+tar -xJf data/raw/wc2022_raw.tar.xz -C data/raw
+```
+
+Processed tables written to `data/processed/`:
 
 | File | Grain | Rows |
 |------|-------|------|
