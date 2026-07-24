@@ -83,6 +83,8 @@ python -m msds_comms_plotter.plots
 - `goal_heatmap.png` — heatmap of goal counts by team (rows) and 15-minute bin
   (columns), single-hue sequential shading, with the top 3 teams outlined and
   bold-labeled in their colors.
+- `goal_bubble.png` — scatter/bubble version of the heatmap: same team x
+  time-bin grid, goal count encoded as bubble size; top 3 teams in color.
 
 ## Notes / validation
 
