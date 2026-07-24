@@ -58,6 +58,26 @@ red cards), `starter`, `position`.
 **Discipline:** `fouls_committed`, `fouls_won`, `yellow_cards`, `red_cards`
 (a second yellow counts as both a yellow and a red).
 
+## Goal timings & plots
+
+`build_goal_events()` returns one row per goal with the exact clock time
+(`minute`, `second`, `time_min`), `goal_type` (open_play / penalty / own_goal),
+and `goal_number` (the team's Nth goal in that match). Saved to
+`data/processed/wc2022_goals.parquet`.
+
+`msds_comms_plotter.plots` (matplotlib only) renders to `reports/figures/`:
+
+```bash
+python -m msds_comms_plotter.plots
+```
+
+- `goal_timing_top3_vs_average.png` — goal number (x) vs clock time (y) for the
+  top 3 teams (Argentina, France, Croatia) with faint per-match points and bold
+  per-ordinal means, against the all-teams average line.
+- `goal_timing_dotplot.png` — Cleveland dot plot: each goal number as a row,
+  mean clock time on the x-axis, comparing the top 3 teams to the average of all
+  *other* teams.
+
 ## Notes / validation
 
 - Penalty **shootout** goals (StatsBomb period 5) are excluded from all stats,
