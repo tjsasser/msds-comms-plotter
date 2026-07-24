@@ -80,6 +80,9 @@ python -m msds_comms_plotter.plots
 - `all_goals_by_team.png` — strip plot of all 172 goals: one row per team
   (ordered by total goals), x = minute scored, one dot per goal colored by type
   (open play / penalty / own goal), with HT/FT/ET markers.
+- `goal_heatmap.png` — heatmap of goal counts by team (rows) and 15-minute bin
+  (columns), single-hue sequential shading, with the top 3 teams outlined and
+  bold-labeled in their colors.
 
 ## Notes / validation
 
