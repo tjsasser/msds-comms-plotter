@@ -165,7 +165,84 @@ def goal_timing_dotplot(goals=None, save=True):
     return fig, ax
 
 
+GOAL_TYPE_COLOR = {
+    "open_play": "#2a78d6",
+    "penalty": "#eb6834",
+    "own_goal": "#1baf7a",
+}
+GOAL_TYPE_LABEL = {
+    "open_play": "Open play",
+    "penalty": "Penalty",
+    "own_goal": "Own goal (for)",
+}
+
+
+def all_goals_by_team(goals=None, save=True):
+    """Strip plot of every goal by every team: one row per team, x = minute.
+
+    Each dot is a single goal, positioned by the minute it was scored and
+    colored by goal type. Teams are ordered by total goals scored.
+    """
+    if goals is None:
+        goals = worldcup.build_goal_events()
+
+    totals = goals.groupby("team").size().sort_values()
+    order = list(totals.index)  # fewest at bottom, most at top (y increases up)
+    ypos = {t: i for i, t in enumerate(order)}
+
+    # Deterministic vertical jitter so goals at the same minute don't overlap.
+    def jitter(i):
+        return ((i * 2654435761) % 1000 / 1000.0 - 0.5) * 0.55
+
+    fig, ax = plt.subplots(figsize=(11, 9))
+    ax.set_axisbelow(True)
+    ax.grid(True, axis="x", color="#ececea", linewidth=0.8)
+
+    for gtype, color in GOAL_TYPE_COLOR.items():
+        sub = goals[goals["goal_type"] == gtype]
+        ys = [ypos[t] + jitter(i) for i, t in enumerate(sub["team"])]
+        ax.scatter(sub["time_min"], ys, s=42, color=color, alpha=0.85,
+                   edgecolors="white", linewidths=0.5, zorder=3,
+                   label=GOAL_TYPE_LABEL[gtype])
+
+    # Half-time / full-time / extra-time reference lines.
+    for x, lab in [(45, "HT"), (90, "FT"), (120, "ET")]:
+        ax.axvline(x, color="#c3c2b7", lw=0.8, ls=":", zorder=1)
+        ax.text(x, -0.7, lab, va="bottom", ha="center",
+                fontsize=8, color="#8a8981")
+
+    # Total goals at the right edge.
+    xmax = goals["time_min"].max()
+    for t in order:
+        ax.text(xmax + 3, ypos[t], str(int(totals[t])), va="center",
+                ha="left", fontsize=8, color="#52514e")
+    ax.text(xmax + 3, len(order) - 0.4, "Total", va="bottom", ha="left",
+            fontsize=8, fontweight="bold", color="#52514e")
+
+    ax.set_yticks(range(len(order)))
+    ax.set_yticklabels(order, fontsize=9)
+    ax.set_ylim(-0.8, len(order) - 0.2)
+    ax.set_xlim(-2, xmax + 8)
+    ax.set_xticks([0, 15, 30, 45, 60, 75, 90, 105, 120])
+    ax.set_xlabel("Minute scored")
+    ax.set_title("Every goal by every team — World Cup 2022 (172 goals)",
+                 fontsize=14, fontweight="bold")
+    for spine in ("top", "right", "left"):
+        ax.spines[spine].set_visible(False)
+    ax.tick_params(axis="y", length=0)
+    ax.legend(frameon=False, loc="lower right", fontsize=9)
+    fig.tight_layout()
+
+    if save:
+        FIG_DIR.mkdir(parents=True, exist_ok=True)
+        out = FIG_DIR / "all_goals_by_team.png"
+        fig.savefig(out, dpi=150, bbox_inches="tight")
+        print(f"Wrote {out}")
+    return fig, ax
+
+
 if __name__ == "__main__":
     goals = worldcup.build_goal_events()
     goal_timing_top3_vs_average(goals=goals)
     goal_timing_dotplot(goals=goals)
+    all_goals_by_team(goals=goals)
