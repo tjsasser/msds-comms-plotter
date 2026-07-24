@@ -299,6 +299,55 @@ def build_all(limit: int | None = None) -> pd.DataFrame:
     return df
 
 
+def build_goal_events(limit: int | None = None) -> pd.DataFrame:
+    """Return one row per goal with the clock time it was scored.
+
+    Columns: ``match_id``, ``match_date``, ``stage``, ``team``, ``scorer``,
+    ``minute``, ``second``, ``time_min`` (decimal minutes), ``goal_type``
+    (``open_play`` | ``penalty`` | ``own_goal``), and ``goal_number`` (the
+    team's Nth goal in that match, ordered by time).
+
+    Penalty-shootout goals (period 5) are excluded. Own goals are credited to
+    the benefiting team via StatsBomb's ``Own Goal For`` event.
+    """
+    session = requests.Session()
+    matches = get_matches(session)
+    minfo = {m["match_id"]: m for m in matches}
+    if limit:
+        matches = matches[:limit]
+
+    rows = []
+    for match in matches:
+        mid = match["match_id"]
+        for ev in get_events(mid, session):
+            if ev.get("period") == 5:
+                continue
+            etype = _name(ev, "type")
+            team = _name(ev, "team")
+            minute = ev.get("minute", 0)
+            second = ev.get("second", 0)
+            scorer = (ev.get("player") or {}).get("name")
+            if etype == "Shot" and _name(ev.get("shot", {}), "outcome") == "Goal":
+                gtype = ("penalty" if _name(ev["shot"], "type") == "Penalty"
+                         else "open_play")
+            elif etype == "Own Goal For":
+                gtype = "own_goal"
+            else:
+                continue
+            rows.append({
+                "match_id": mid, "team": team, "scorer": scorer,
+                "minute": minute, "second": second,
+                "time_min": minute + second / 60.0, "goal_type": gtype,
+            })
+
+    g = pd.DataFrame(rows)
+    g["match_date"] = g["match_id"].map(lambda i: minfo[i].get("match_date"))
+    g["stage"] = g["match_id"].map(lambda i: _name(minfo[i], "competition_stage"))
+    g.sort_values(["match_id", "team", "minute", "second"], inplace=True)
+    g["goal_number"] = g.groupby(["match_id", "team"]).cumcount() + 1
+    return g.reset_index(drop=True)
+
+
 def main():
     df = build_all()
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
