@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import matplotlib
+import pandas as pd
 
 matplotlib.use("Agg")  # headless rendering
 import matplotlib.pyplot as plt
@@ -241,8 +242,86 @@ def all_goals_by_team(goals=None, save=True):
     return fig, ax
 
 
+def goal_heatmap(goals=None, save=True):
+    """Heatmap of goals: teams (rows) x 15-minute bins (cols), shaded by count.
+
+    Every goal is counted into a (team, time-bin) cell. Uses a single-hue
+    sequential ramp for magnitude. The top-3 teams are highlighted with a
+    colored outline around their row and a bold, colored label.
+    """
+    import numpy as np
+    from matplotlib.patches import Rectangle
+
+    if goals is None:
+        goals = worldcup.build_goal_events()
+
+    edges = [0, 15, 30, 45, 60, 75, 90, 105, 120]
+    labels = ["0-15", "16-30", "31-45", "46-60",
+              "61-75", "76-90", "91-105", "106-120"]
+    binned = pd.cut(goals["time_min"], bins=edges, labels=labels,
+                    right=True, include_lowest=True)
+    mat = (goals.assign(bin=binned)
+           .pivot_table(index="team", columns="bin", aggfunc="size",
+                        fill_value=0, observed=False))
+    mat = mat.reindex(columns=labels, fill_value=0)
+    order = mat.sum(axis=1).sort_values(ascending=False).index
+    mat = mat.loc[order]
+    M = mat.to_numpy()
+
+    fig, ax = plt.subplots(figsize=(9.5, 10))
+    cmap = plt.get_cmap("Purples")
+    im = ax.imshow(M, aspect="auto", cmap=cmap, vmin=0, vmax=M.max())
+
+    ax.set_xticks(range(len(labels)))
+    ax.set_xticklabels([f"{l}'" for l in labels], rotation=0, fontsize=8)
+    ax.set_yticks(range(len(order)))
+    ax.set_yticklabels(order, fontsize=9)
+    ax.set_xlabel("Minute scored (15-minute bins)")
+    ax.set_title("Goals by team and time — World Cup 2022\n"
+                 "(top 3 teams highlighted)", fontsize=13, fontweight="bold")
+
+    # Cell counts, with contrast-aware text color.
+    thresh = M.max() * 0.55
+    for i in range(M.shape[0]):
+        for j in range(M.shape[1]):
+            v = M[i, j]
+            if v > 0:
+                ax.text(j, i, str(int(v)), ha="center", va="center",
+                        fontsize=8,
+                        color="white" if v > thresh else "#3a2e5c")
+
+    # Highlight the top-3 rows.
+    row_of = {t: k for k, t in enumerate(order)}
+    for t in TOP3:
+        i = row_of[t]
+        ax.add_patch(Rectangle((-0.5, i - 0.5), len(labels), 1, fill=False,
+                               edgecolor=TEAM_COLOR[t], lw=2.6, zorder=5))
+        ax.get_yticklabels()[i].set_color(TEAM_COLOR[t])
+        ax.get_yticklabels()[i].set_fontweight("bold")
+
+    ax.set_xticks(np.arange(-0.5, len(labels), 1), minor=True)
+    ax.set_yticks(np.arange(-0.5, len(order), 1), minor=True)
+    ax.grid(which="minor", color="white", linewidth=1.5)
+    ax.tick_params(which="both", length=0)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    cbar = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02)
+    cbar.set_label("Goals scored", fontsize=9)
+    cbar.outline.set_visible(False)
+    fig.tight_layout()
+
+    if save:
+        FIG_DIR.mkdir(parents=True, exist_ok=True)
+        out = FIG_DIR / "goal_heatmap.png"
+        fig.savefig(out, dpi=150, bbox_inches="tight")
+        print(f"Wrote {out}")
+    return fig, ax
+
+
 if __name__ == "__main__":
     goals = worldcup.build_goal_events()
     goal_timing_top3_vs_average(goals=goals)
     goal_timing_dotplot(goals=goals)
     all_goals_by_team(goals=goals)
+    goal_heatmap(goals=goals)
