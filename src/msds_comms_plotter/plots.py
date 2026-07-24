@@ -319,9 +319,87 @@ def goal_heatmap(goals=None, save=True):
     return fig, ax
 
 
+def goal_bubble(goals=None, save=True):
+    """Scatter (bubble) version of the goal heatmap.
+
+    Same team x 15-minute-bin grid, but goal count is encoded as dot size
+    rather than cell color. Top-3 teams' bubbles are drawn in their colors
+    (others neutral gray) with bold, colored labels.
+    """
+    if goals is None:
+        goals = worldcup.build_goal_events()
+
+    edges = [0, 15, 30, 45, 60, 75, 90, 105, 120]
+    labels = ["0-15", "16-30", "31-45", "46-60",
+              "61-75", "76-90", "91-105", "106-120"]
+    binned = pd.cut(goals["time_min"], bins=edges, labels=labels,
+                    right=True, include_lowest=True)
+    mat = (goals.assign(bin=binned)
+           .pivot_table(index="team", columns="bin", aggfunc="size",
+                        fill_value=0, observed=False)
+           .reindex(columns=labels, fill_value=0))
+    order = list(mat.sum(axis=1).sort_values(ascending=False).index)
+    mat = mat.loc[order]
+
+    fig, ax = plt.subplots(figsize=(9.5, 10))
+    ax.set_axisbelow(True)
+    ax.grid(True, color="#ececea", linewidth=0.8)
+
+    scale = 55.0  # points^2 per goal
+    top3_set = set(TOP3)
+    for yi, team in enumerate(order):
+        color = TEAM_COLOR.get(team, "#b7b2cf") if team in top3_set else "#b7b2cf"
+        for xj, lab in enumerate(labels):
+            c = int(mat.loc[team, lab])
+            if c > 0:
+                ax.scatter(xj, yi, s=c * scale, color=color,
+                           alpha=0.9 if team in top3_set else 0.7,
+                           edgecolors="white", linewidths=0.7,
+                           zorder=4 if team in top3_set else 3)
+
+    ax.set_xticks(range(len(labels)))
+    ax.set_xticklabels([f"{l}'" for l in labels], fontsize=8)
+    ax.set_yticks(range(len(order)))
+    ax.set_yticklabels(order, fontsize=9)
+    ax.invert_yaxis()  # highest scorer at top
+    ax.set_xlim(-0.6, len(labels) - 0.4)
+    ax.set_ylim(len(order) - 0.4, -0.6)
+    ax.set_xlabel("Minute scored (15-minute bins)")
+    ax.set_title("Goals by team and time — World Cup 2022\n"
+                 "(bubble size = goals; top 3 teams in color)",
+                 fontsize=13, fontweight="bold")
+
+    # Bold, colored labels for the top 3.
+    for i, team in enumerate(order):
+        if team in top3_set:
+            ax.get_yticklabels()[i].set_color(TEAM_COLOR[team])
+            ax.get_yticklabels()[i].set_fontweight("bold")
+
+    # Size legend.
+    handles = [Line2D([0], [0], marker="o", linestyle="none",
+                      markerfacecolor="#b7b2cf", markeredgecolor="white",
+                      markersize=(n * scale) ** 0.5 / 2.2, label=f"{n} goal" + ("s" if n > 1 else ""))
+               for n in (1, 3, 6)]
+    ax.legend(handles=handles, frameon=False, loc="lower right",
+              labelspacing=1.6, borderpad=1.0, title="Bubble size", fontsize=9)
+
+    for spine in ("top", "right"):
+        ax.spines[spine].set_visible(False)
+    ax.tick_params(length=0)
+    fig.tight_layout()
+
+    if save:
+        FIG_DIR.mkdir(parents=True, exist_ok=True)
+        out = FIG_DIR / "goal_bubble.png"
+        fig.savefig(out, dpi=150, bbox_inches="tight")
+        print(f"Wrote {out}")
+    return fig, ax
+
+
 if __name__ == "__main__":
     goals = worldcup.build_goal_events()
     goal_timing_top3_vs_average(goals=goals)
     goal_timing_dotplot(goals=goals)
     all_goals_by_team(goals=goals)
     goal_heatmap(goals=goals)
+    goal_bubble(goals=goals)
