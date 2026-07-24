@@ -77,6 +77,9 @@ python -m msds_comms_plotter.plots
 - `goal_timing_dotplot.png` — Cleveland dot plot: each goal number as a row,
   mean clock time on the x-axis, comparing the top 3 teams to the average of all
   *other* teams.
+- `all_goals_by_team.png` — strip plot of all 172 goals: one row per team
+  (ordered by total goals), x = minute scored, one dot per goal colored by type
+  (open play / penalty / own goal), with HT/FT/ET markers.
 
 ## Notes / validation
 
