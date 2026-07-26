@@ -125,6 +125,48 @@ best-effort-registers the usual font directories so JetBrains Mono is picked up;
 without the font installed, PNGs fall back to a generic monospace (nothing
 breaks). See `chartkit`'s font note in the top-level README.
 
+### Making the synthetic linked-brush chart
+
+`linked_scatter_random_demo(seed=42, save=False)` generates its own data, so it
+needs no World Cup tables. Call it with a different `seed` to get a different
+random cloud (same shape, different points):
+
+```python
+from msds_comms_plotter import altair_charts as ac
+
+ac.linked_scatter_random_demo()          # default cloud (seed=42), returns an alt.Chart
+ac.linked_scatter_random_demo(seed=7)    # a different random cloud
+ac.linked_scatter_random_demo(save=True) # also write alt_brush_random_demo.html/.png
+```
+
+The data comes from `ac._random_cloud(seed)` — a DataFrame with `make` (three
+categories), `power`, and `efficiency` (negatively correlated). Edit the
+`_DEMO_MAKES` table in `altair_charts.py` to change the category centres,
+spreads, or counts.
+
+**Building the pattern yourself** on any DataFrame with an x, a y, and a
+category column is just a few lines — an interval selection drives both the
+point color and a filtered `count()` bar chart:
+
+```python
+import altair as alt
+
+brush = alt.selection_interval()
+color = alt.Color("category:N")
+
+points = alt.Chart(df).mark_point(filled=True).encode(
+    x="x:Q", y="y:Q",
+    # selected points keep their category color; the rest fade to grey
+    color=alt.when(brush).then(color).otherwise(alt.value("lightgray")),
+).add_params(brush)
+
+bars = alt.Chart(df).mark_bar().encode(
+    y="category:N", x="count():Q", color=color,
+).transform_filter(brush)   # only the brushed points are counted
+
+points & bars   # vertical concatenation
+```
+
 ## Notes / validation
 
 - Penalty **shootout** goals (StatsBomb period 5) are excluded from all stats,
