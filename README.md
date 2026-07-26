@@ -291,6 +291,23 @@ so it stays interactive offline — no server, no internet). Re-open that file a
 time without re-running. On a headless machine the script skips the browser and
 just prints the file path.
 
+> **Note — running the examples modifies tracked files.** The figures under
+> `reports/figures/` are committed to the repo, so regenerating them (running
+> this script, `python -m msds_comms_plotter.altair_charts`, or `…plots`)
+> leaves local changes in your working tree — `git status` will show the
+> `reports/figures/` files as modified. That's expected; the output just isn't
+> byte-identical every run. Before you `git pull`, discard those regenerated
+> files so the pull isn't blocked:
+>
+> ```bash
+> git checkout -- reports/figures/   # discard regenerated figures, then pull
+> git pull
+> ```
+>
+> (Only do this when the sole changes are regenerated figures — check with
+> `git status` first. If you want to avoid this entirely, git-ignore
+> `reports/figures/` so the outputs stay untracked.)
+
 **Quickest — just look at the pre-rendered charts.** Individual charts are
 committed in `reports/figures/`. Open any `alt_*.html` in a browser for the
 interactive version, or the matching `.png` for a static image:
