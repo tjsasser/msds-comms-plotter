@@ -271,9 +271,24 @@ The package ships a worked example on real data: `altair_charts` explores the
 scatter, histogram, heatmap), and `plots` renders matplotlib figures of the
 same data.
 
-**Quickest — just look at the pre-rendered charts.** They're committed in
-`reports/figures/`. Open any `alt_*.html` in a browser for the interactive
-version, or the matching `.png` for a static image:
+**Interactive — open all five in your browser (recommended).** The example
+script `examples/show_wc2022_charts.py` builds every chart, stacks them into one
+page, and opens it in your default web browser so you can hover for tooltips,
+pan, and zoom:
+
+```bash
+python examples/show_wc2022_charts.py
+```
+
+It writes a **self-contained** HTML gallery to
+`reports/figures/wc2022_altair_gallery.html` (the Vega libraries are embedded,
+so it stays interactive offline — no server, no internet). Re-open that file any
+time without re-running. On a headless machine the script skips the browser and
+just prints the file path.
+
+**Quickest — just look at the pre-rendered charts.** Individual charts are
+committed in `reports/figures/`. Open any `alt_*.html` in a browser for the
+interactive version, or the matching `.png` for a static image:
 
 ```bash
 open reports/figures/alt_scatter_xg_vs_goals.html    # macOS
@@ -315,6 +330,7 @@ msds-comms-plotter/
 │   ├── altair_charts.py  # World Cup 2022 Altair charts (run as a module)
 │   ├── plots.py          # World Cup 2022 matplotlib figures
 │   └── worldcup.py       # dataset loading/paths
+├── examples/             # runnable examples (show_wc2022_charts.py opens a browser)
 ├── data/                 # example datasets
 ├── docs/                 # dataset notes (see docs/wc2022_data.md)
 ├── notebooks/            # exploratory notebooks
