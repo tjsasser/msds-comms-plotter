@@ -338,7 +338,7 @@ ac.scatter_xg_vs_goals()            # returns an alt.Chart; renders in Jupyter /
 ac.bar_goals_by_team()              # bar / line / scatter / histogram / heatmap
 ac.linked_scatter_position_counts() # brush a box on the scatter → bars below recount
 ac.scatter_point_paths_hover()      # hover to trace a team's path; slider + search box
-ac.linked_scatter_passing()         # brush passing volume vs accuracy; player-name search box
+ac.linked_scatter_passing()         # brush + player search + color-scheme dropdown (4 schemes)
 ```
 
 See [`docs/wc2022_data.md`](docs/wc2022_data.md) for the full chart list and the

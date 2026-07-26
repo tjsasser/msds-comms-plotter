@@ -62,6 +62,12 @@ STAGE_RANGE = chartkit.PALETTE[:6]
 POSITION_ORDER = ["Defender", "Midfielder", "Forward"]
 POSITION_RANGE = chartkit.PALETTE[:3]
 
+# Categorical color schemes offered by the passing chart's scheme picker. Values
+# are Vega scheme names (bound live to the color scale); labels are what the
+# dropdown shows. All four separate three categories clearly.
+SCHEME_OPTIONS = ["category10", "dark2", "tableau10", "set2"]
+SCHEME_LABELS = ["Category 10", "Dark 2", "Tableau 10", "Set 2 (soft)"]
+
 # StatsBomb stores full legal names, so the last token isn't always the
 # familiar one (e.g. Mbappé is recorded as "Kylian Mbappé Lottin"). Override
 # the handful of stars we direct-label; everything else falls back to the
@@ -563,13 +569,21 @@ def linked_scatter_passing(stats=None, save=False):
     A **player search box** filters both views to names containing the typed
     text (any part of the full name, case-insensitive); an empty box shows
     everyone. Search and brush compose — search narrows the pool, brush selects
-    within it.
+    within it. A **color-scheme dropdown** switches the position palette live
+    between four categorical schemes.
     """
     df = _players_passing(stats)
 
+    # Live color-scheme picker: the selected Vega scheme name is bound straight
+    # into the color scale, so points, bars, and legend all recolor together.
+    scheme = alt.param(
+        name="color_scheme", value=SCHEME_OPTIONS[0],
+        bind=alt.binding_select(options=SCHEME_OPTIONS, labels=SCHEME_LABELS,
+                                name="Colors "))
     color = alt.Color(
         "position_group:N", title="Position",
-        scale=alt.Scale(domain=POSITION_ORDER, range=POSITION_RANGE),
+        scale=alt.Scale(domain=POSITION_ORDER,
+                        scheme=alt.ExprRef(expr="color_scheme")),
         sort=POSITION_ORDER)
     brush = alt.selection_interval(name="passing_brush")
 
@@ -607,7 +621,7 @@ def linked_scatter_passing(stats=None, save=False):
     ).transform_filter(brush).transform_filter(name_matches).properties(
         width=460, height=150, title="Selected players by position")
 
-    chart = alt.vconcat(points, bars).add_params(name_search).properties(
+    chart = alt.vconcat(points, bars).add_params(name_search, scheme).properties(
         title="Passing: volume vs accuracy — search a name or brush the cloud")
     return _save(chart, "alt_brush_passing") if save else chart
 
