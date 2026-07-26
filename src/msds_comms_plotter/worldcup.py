@@ -348,6 +348,44 @@ def build_goal_events(limit: int | None = None) -> pd.DataFrame:
     return g.reset_index(drop=True)
 
 
+def build_shot_events(limit: int | None = None) -> pd.DataFrame:
+    """Return one row per shot with the clock time it was taken.
+
+    Columns: ``match_id``, ``team``, ``minute``, ``second``, ``time_min``
+    (decimal minutes), ``xg`` (StatsBomb expected goals), ``outcome`` (Goal /
+    Saved / Off T / Blocked / …), and ``on_target``.
+
+    Penalty-shootout shots (period 5) are excluded so the timeline stays within
+    match time.
+    """
+    session = requests.Session()
+    matches = get_matches(session)
+    if limit:
+        matches = matches[:limit]
+
+    rows = []
+    for match in matches:
+        mid = match["match_id"]
+        for ev in get_events(mid, session):
+            if ev.get("period") == 5:
+                continue
+            if _name(ev, "type") != "Shot":
+                continue
+            shot = ev.get("shot", {})
+            minute = ev.get("minute", 0)
+            second = ev.get("second", 0)
+            outcome = _name(shot, "outcome")
+            rows.append({
+                "match_id": mid, "team": _name(ev, "team"),
+                "minute": minute, "second": second,
+                "time_min": minute + second / 60.0,
+                "xg": shot.get("statsbomb_xg", 0.0) or 0.0,
+                "outcome": outcome,
+                "on_target": outcome in SHOTS_ON_TARGET,
+            })
+    return pd.DataFrame(rows)
+
+
 def main():
     df = build_all()
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)

@@ -12,7 +12,7 @@ The package ships three things:
 | Module | What it does |
 | --- | --- |
 | `msds_comms_plotter.plots` | Ready-made matplotlib figures for the World Cup 2022 dataset. |
-| `msds_comms_plotter.altair_charts` | Interactive Altair explorations of the same data (bar, line, scatter, histogram, heatmap, two linked-brush charts, and a point-paths chart), with a page-wide color-scheme picker in the gallery. |
+| `msds_comms_plotter.altair_charts` | Interactive Altair explorations of the same data (bar, line, scatter, histogram, heatmap, two linked-brush charts, a point-paths chart, and a horizon graph), with a page-wide color-scheme picker in the gallery. |
 | `msds_comms_plotter.chartkit` | Shared theming for matplotlib **and** Altair. |
 
 ### About `chartkit`
@@ -267,9 +267,9 @@ Both figures now share the same font, palette, and chrome.
 
 The package ships a worked example on real data: `altair_charts` explores the
 2022 World Cup with the five most common Altair chart types (bar, line,
-scatter, histogram, heatmap) plus three interactive ones (two linked-brush
-charts and a point-paths chart), and `plots` renders matplotlib figures of the
-same data.
+scatter, histogram, heatmap) plus two linked-brush charts, a point-paths chart,
+and a horizon graph of shots-per-minute, and `plots` renders matplotlib figures
+of the same data.
 
 **Interactive — open the whole gallery in your browser (recommended).** The
 example script `examples/show_wc2022_charts.py` builds every chart, stacks them

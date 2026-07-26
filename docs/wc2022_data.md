@@ -90,8 +90,8 @@ python -m msds_comms_plotter.plots
 
 `msds_comms_plotter.altair_charts` builds interactive Altair versions of the
 same data, all themed with `chartkit` so they match the matplotlib figures. It
-walks through the five most common Altair chart types — one per mark — plus a
-linked-brush interaction:
+walks through the five most common Altair chart types — one per mark — plus two
+linked-brush charts, a point-paths chart, and a horizon graph:
 
 ```bash
 python -m msds_comms_plotter.altair_charts
@@ -110,7 +110,8 @@ if `vl-convert-python` is installed, a static `.png` to `reports/figures/`:
 | Heatmap | `mark_rect` | `alt_heatmap_team_phase` | Goals by team (rows) × 15-minute phase (cols), sequential `viridis` shading. |
 | Linked brush | `mark_point` + `mark_bar` | `alt_brush_position_counts` | Scatter colored by position; drag a box and the count-by-position bars below recount only the selected players, while unselected points fade to grey (`selection_interval`). Mirrors Altair's README linked-histogram example. |
 | Point paths on hover | `mark_trail` + `mark_circle` | `alt_point_paths_hover` | Team-match scatter (xG vs goals, colored by stage). A match-number slider, hover to trace a team's whole path through the tournament, and a search box to spotlight a team by name. |
-| Linked brush (passing) | `mark_point` + `mark_bar` | `alt_brush_passing` | Passing **volume vs accuracy** — passes attempted (x) vs completion % (y), colored by position. Two continuous measures, so it forms a full scatter cloud. Brush a box to recount the count-by-position bars, type in the **player search box** to filter both views by name, and switch the **color-scheme dropdown** (4 categorical schemes) to recolor points, bars, and legend live. |
+| Linked brush (passing) | `mark_point` + `mark_bar` | `alt_brush_passing` | Passing **volume vs accuracy** — passes attempted (x) vs completion % (y), colored by position. Two continuous measures, so it forms a full scatter cloud. Brush a box to recount the count-by-position bars, type in the **player search box** to filter both views by name, and switch the **color-scheme dropdown** to recolor points, bars, and legend live. |
+| Horizon graph | `mark_area` ×N (clipped) | `alt_horizon_shots` | **Shots per match minute** across the tournament — new data (shot *timing*, not just counts). A horizon graph folds the series into 3 clipped area bands so busier minutes stack into darker colour, showing attacking pressure rise toward each half's end. Built from `worldcup.build_shot_events()`. |
 
 **Interactivity:** every chart has hover tooltips. The line and scatter charts
 also zoom (scroll) and pan (drag). The linked-brush chart filters its bar view

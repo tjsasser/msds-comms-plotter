@@ -44,18 +44,23 @@ OUT = worldcup.PROJECT_ROOT / "reports" / "figures" / "wc2022_altair_gallery.htm
 
 
 def _load():
-    """Return (goals, player_match_stats), building them if not already cached."""
+    """Return (goals, player_match_stats, shots), building any that aren't cached.
+
+    goals/stats come from processed parquet when present; shots have no parquet,
+    so they're always built from the cached event JSON.
+    """
     goals_path = PROCESSED / "wc2022_goals.parquet"
     stats_path = PROCESSED / "wc2022_player_match_stats.parquet"
     if goals_path.exists() and stats_path.exists():
-        return pd.read_parquet(goals_path), pd.read_parquet(stats_path)
-
-    print("Processed tables not found — building from the StatsBomb cache.")
-    print("(If this fails, unpack the raw data first: "
-          "tar -xJf data/raw/wc2022_raw.tar.xz -C data/raw)")
-    goals = worldcup.build_goal_events()
-    stats = worldcup.build_all()
-    return goals, stats
+        goals = pd.read_parquet(goals_path)
+        stats = pd.read_parquet(stats_path)
+    else:
+        print("Processed tables not found — building from the StatsBomb cache.")
+        print("(If this fails, unpack the raw data first: "
+              "tar -xJf data/raw/wc2022_raw.tar.xz -C data/raw)")
+        goals = worldcup.build_goal_events()
+        stats = worldcup.build_all()
+    return goals, stats, worldcup.build_shot_events()
 
 
 def build_gallery() -> alt.VConcatChart:
@@ -67,7 +72,7 @@ def build_gallery() -> alt.VConcatChart:
     these signals from them. Each param is still added once, at the top level, so
     one control recolors every chart that references it.
     """
-    goals, stats = _load()
+    goals, stats, shots = _load()
     cat_scheme = alt.param(name="cat_scheme", value=ac.CAT_SCHEME_OPTIONS[0])
     seq_scheme = alt.param(name="seq_scheme", value=ac.SEQ_SCHEME_OPTIONS[0])
 
@@ -80,6 +85,7 @@ def build_gallery() -> alt.VConcatChart:
         ac.line_cumulative_goals(goals=goals, scheme_param=cat_scheme),
         ac.scatter_xg_vs_goals(stats=stats, scheme_param=cat_scheme),
         ac.histogram_goal_minutes(goals=goals, scheme_param=cat_scheme),
+        ac.horizon_shots_per_minute(shots=shots, scheme_param=cat_scheme),
         ac.heatmap_team_phase(goals=goals, scheme_param=seq_scheme),
         ac.linked_scatter_position_counts(stats=stats, scheme_param=cat_scheme),
         ac.linked_scatter_passing(stats=stats, scheme_param=cat_scheme),

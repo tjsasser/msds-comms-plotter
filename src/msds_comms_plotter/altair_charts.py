@@ -60,7 +60,7 @@ POSITION_ORDER = ["Defender", "Midfielder", "Forward"]
 # The single-hue charts have no category to color by, but can still follow the
 # live categorical scheme: each takes a distinct slot of it (bars → 1st color,
 # line → 2nd, …) via a constant "series" field on a shared ordered domain.
-STATIC_ORDER = ["Bars", "Line", "Scatter", "Histogram"]
+STATIC_ORDER = ["Bars", "Line", "Scatter", "Histogram", "Horizon"]
 
 
 def _static_scheme_color(series: str):
@@ -146,6 +146,11 @@ def _short_name(full: str) -> str:
 def _goals(goals: pd.DataFrame | None) -> pd.DataFrame:
     """Return the one-row-per-goal table, building it from cache if needed."""
     return worldcup.build_goal_events() if goals is None else goals
+
+
+def _shots(shots: pd.DataFrame | None) -> pd.DataFrame:
+    """Return the one-row-per-shot table, building it from cache if needed."""
+    return worldcup.build_shot_events() if shots is None else shots
 
 
 def _player_totals(stats: pd.DataFrame | None) -> pd.DataFrame:
@@ -745,6 +750,60 @@ def linked_scatter_passing(stats=None, scheme_param=None, save=False):
     return _save(chart, "alt_brush_passing") if save else chart
 
 
+# --------------------------------------------------------------------------- #
+# 9. Horizon graph  —  layered clipped areas (shots per match minute)
+# --------------------------------------------------------------------------- #
+def horizon_shots_per_minute(shots=None, bands=3, max_minute=90,
+                             scheme_param=None, save=False):
+    """Horizon graph: shots per match minute across the whole tournament.
+
+    A horizon graph compresses a tall time series into a short band by folding
+    it into ``bands`` layers: each layer is a clipped area of the amount that
+    spills past its threshold, so busier minutes stack into darker colour. Same
+    data every renderer only ever saw as shot *counts* — here it's the shot
+    *timing*, which shows attacking pressure rise toward each half's end.
+
+    Single-hue by default; with a shared ``scheme_param`` the bands follow the
+    fifth slot of the live categorical scheme.
+    """
+    import math
+    s = _shots(shots)
+    s = s[(s["minute"] >= 1) & (s["minute"] <= max_minute)]
+    per_min = (s.groupby("minute", as_index=False).size()
+               .rename(columns={"size": "shots"}))
+    if scheme_param is not None:
+        per_min = per_min.assign(_series="Horizon")
+    band = math.ceil(per_min["shots"].max() / bands)
+
+    x = alt.X("minute:Q", scale=alt.Scale(zero=False, nice=False),
+              title="Match minute")
+    tip = [alt.Tooltip("minute:Q", title="Minute"),
+           alt.Tooltip("shots:Q", title="Shots")]
+    layers = []
+    for k in range(bands):
+        # Each layer draws the shots above k*band, clamped to one band height,
+        # then all layers overlay in the same [0, band] window.
+        lyr = alt.Chart(per_min).transform_calculate(
+            v=f"clamp(datum.shots - {k * band}, 0, {band})")
+        y = alt.Y("v:Q", scale=alt.Scale(domain=[0, band]),
+                  title=None, axis=None)
+        if scheme_param is None:
+            lyr = lyr.mark_area(clip=True, interpolate="monotone", opacity=0.5,
+                                color=chartkit.PALETTE[2]).encode(x=x, y=y,
+                                                                  tooltip=tip)
+        else:
+            lyr = lyr.mark_area(clip=True, interpolate="monotone",
+                                opacity=0.5).encode(
+                x=x, y=y, color=_static_scheme_color("Horizon"), tooltip=tip)
+        layers.append(lyr)
+
+    chart = alt.layer(*layers).properties(
+        width=560, height=90,
+        title=f"Shots per match minute — horizon graph "
+              f"({len(s)} shots, {bands} bands)")
+    return _save(chart, "alt_horizon_shots") if save else chart
+
+
 ALL_CHARTS = [
     bar_goals_by_team,
     line_cumulative_goals,
@@ -754,6 +813,7 @@ ALL_CHARTS = [
     linked_scatter_position_counts,
     scatter_point_paths_hover,
     linked_scatter_passing,
+    horizon_shots_per_minute,
 ]
 
 
@@ -761,6 +821,7 @@ def main():
     """Build every chart once, reusing shared data, and save to reports/figures/."""
     goals = worldcup.build_goal_events()
     stats = worldcup.build_all()
+    shots = worldcup.build_shot_events()
     bar_goals_by_team(goals=goals, save=True)
     line_cumulative_goals(goals=goals, save=True)
     scatter_xg_vs_goals(stats=stats, save=True)
@@ -769,6 +830,7 @@ def main():
     linked_scatter_position_counts(stats=stats, save=True)
     scatter_point_paths_hover(stats=stats, save=True)
     linked_scatter_passing(stats=stats, save=True)
+    horizon_shots_per_minute(shots=shots, save=True)
 
 
 if __name__ == "__main__":
