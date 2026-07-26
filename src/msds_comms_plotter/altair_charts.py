@@ -82,14 +82,22 @@ def _static_scheme_color(series: str):
 # six-category stage scale.
 CAT_SCHEME_OPTIONS = ["category10", "dark2", "tableau10", "set2",
                       "set1", "tableau20", "paired", "accent",
-                      "observable10", "set3"]
+                      "observable10", "set3", "category20", "category20b",
+                      "category20c", "pastel1", "pastel2"]
 CAT_SCHEME_LABELS = ["Category 10", "Dark 2", "Tableau 10", "Set 2 (soft)",
                      "Set 1 (bold)", "Tableau 20", "Paired", "Accent",
-                     "Observable 10", "Set 3"]
+                     "Observable 10", "Set 3", "Category 20", "Category 20b",
+                     "Category 20c", "Pastel 1", "Pastel 2"]
 
 # Sequential color ramps (for the heatmap's magnitude/count scale).
-SEQ_SCHEME_OPTIONS = ["viridis", "magma", "blues", "greens"]
-SEQ_SCHEME_LABELS = ["Viridis", "Magma", "Blues", "Greens"]
+SEQ_SCHEME_OPTIONS = ["viridis", "magma", "inferno", "plasma", "cividis",
+                      "turbo", "blues", "greens", "greys", "oranges",
+                      "purples", "reds", "bluegreen", "yellowgreenblue",
+                      "yelloworangered"]
+SEQ_SCHEME_LABELS = ["Viridis", "Magma", "Inferno", "Plasma", "Cividis",
+                     "Turbo", "Blues", "Greens", "Greys", "Oranges",
+                     "Purples", "Reds", "Blue-green", "Yellow-green-blue",
+                     "Yellow-orange-red"]
 
 
 def categorical_scheme_param():

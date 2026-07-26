@@ -126,15 +126,17 @@ renders its own bound inputs at the bottom, the gallery leaves the color params
 *unbound* and injects real `<select>` elements at the top, wiring them to the
 Vega view's `cat_scheme` / `seq_scheme` signals. The two schemes:
 
-- **Category colors** — one of **ten** categorical schemes (Category 10,
-  Dark 2, Tableau 10, Set 2, Set 1, Tableau 20, Paired, Accent, Observable 10,
-  Set 3) applied to *every* chart the scheme can reach: the two position brush
-  charts, the point-paths stage colors, and the single-hue charts. The bar,
-  line, scatter, and histogram each take a distinct slot of the scheme (1st,
-  2nd, 3rd, 4th color), so they recolor together with everything else. Points,
-  bars, and legends all update at once.
-- **Heatmap colors** — one sequential ramp (Viridis / Magma / Blues / Greens)
-  applied to the heatmap's magnitude scale.
+- **Category colors** — one of **fifteen** categorical schemes (Category 10/20/
+  20b/20c, Dark 2, Tableau 10/20, Set 1/2/3, Paired, Accent, Observable 10,
+  Pastel 1/2) applied to *every* chart the scheme can reach: the two position
+  brush charts, the point-paths stage colors, and the single-hue charts. The
+  bar, line, scatter, and histogram each take a distinct slot of the scheme
+  (1st, 2nd, 3rd, 4th color), so they recolor together with everything else.
+  Points, bars, and legends all update at once.
+- **Heatmap colors** — one of **fifteen** sequential ramps (Viridis, Magma,
+  Inferno, Plasma, Cividis, Turbo, Blues, Greens, Greys, Oranges, Purples, Reds,
+  Blue-green, Yellow-green-blue, Yellow-orange-red) applied to the heatmap's
+  magnitude scale.
 
 The controls are pinned to the top of the page (see above). Run standalone, the
 category-colored charts each supply their own matching dropdown; the single-hue
