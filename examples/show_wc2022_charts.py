@@ -28,7 +28,6 @@ it again any time without re-running.
 from __future__ import annotations
 
 import webbrowser
-from pathlib import Path
 
 import altair as alt
 import pandas as pd
@@ -58,6 +57,14 @@ def _load():
 def build_gallery() -> alt.VConcatChart:
     """Assemble all the charts into a single vertically stacked view."""
     goals, stats = _load()
+    # Two shared color controls drive the whole page: one "Category colors"
+    # dropdown for every chart that colors by a category, and one "Heatmap
+    # colors" dropdown for the heatmap's sequential ramp. Each param is created
+    # once here, handed to the charts that use it, and added to the gallery a
+    # single time (below) so one control recolors all of its charts at once.
+    cat_scheme = ac.categorical_scheme_param()
+    seq_scheme = ac.sequential_scheme_param()
+
     # NOTE: scatter_point_paths_hover is placed LAST on purpose. Its bound input
     # widgets (the "Match" slider and "Search" box) render in a single block at
     # the very bottom of the page regardless of chart order, so the chart they
@@ -67,15 +74,16 @@ def build_gallery() -> alt.VConcatChart:
         ac.line_cumulative_goals(goals=goals),
         ac.scatter_xg_vs_goals(stats=stats),
         ac.histogram_goal_minutes(goals=goals),
-        ac.heatmap_team_phase(goals=goals),
-        ac.linked_scatter_position_counts(stats=stats),  # brush: xG vs goals
-        ac.linked_scatter_passing(stats=stats),          # brush: passing volume vs accuracy
-        ac.scatter_point_paths_hover(stats=stats),       # LAST: owns the bottom slider + search box
+        ac.heatmap_team_phase(goals=goals, scheme_param=seq_scheme),
+        ac.linked_scatter_position_counts(stats=stats, scheme_param=cat_scheme),
+        ac.linked_scatter_passing(stats=stats, scheme_param=cat_scheme),
+        ac.scatter_point_paths_hover(stats=stats, scheme_param=cat_scheme),  # LAST
     ]
     # Independent color scales so the heatmap's sequential ramp doesn't leak
-    # into the other charts.
+    # into the other charts; the two scheme params are added once, at the top.
     return (alt.vconcat(*charts)
             .resolve_scale(color="independent")
+            .add_params(cat_scheme, seq_scheme)
             .properties(title="World Cup 2022 — an Altair chart gallery"))
 
 

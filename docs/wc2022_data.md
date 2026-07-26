@@ -119,6 +119,23 @@ crossfilter. The point-paths chart adds a match-number slider, hover-to-trace
 paths, and a team search box. (Static PNGs capture only the initial state — the
 slider/hover/search interactions need the HTML in a browser.)
 
+**Shared color controls (gallery).** The example gallery
+(`examples/show_wc2022_charts.py`) exposes two dropdowns that recolor multiple
+charts at once, built from `categorical_scheme_param()` and
+`sequential_scheme_param()` (each created once and handed to the charts that
+use it):
+
+- **Category colors** — one categorical scheme (Category 10 / Dark 2 /
+  Tableau 10 / Set 2) applied to *every* chart that colors by a category: the
+  two position brush charts and the point-paths stage colors. Points, bars, and
+  legends recolor together.
+- **Heatmap colors** — one sequential ramp (Viridis / Magma / Blues / Greens)
+  applied to the heatmap's magnitude scale.
+
+Run standalone, each of those charts instead supplies its own matching dropdown.
+The single-hue charts (bar, line, scatter, histogram) have no categorical color
+scale, so the pickers don't affect them.
+
 **Fonts for PNG export:** the HTML output uses the browser's fonts, but the
 PNG backend (`vl-convert`) does not read system fonts automatically. The module
 best-effort-registers the usual font directories so JetBrains Mono is picked up;

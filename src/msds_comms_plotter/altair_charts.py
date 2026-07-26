@@ -50,23 +50,48 @@ GOAL_TYPE_RANGE = [chartkit.PALETTE[0], chartkit.PALETTE[3], chartkit.PALETTE[4]
 GOAL_TYPE_TITLES = {"open_play": "Open play", "penalty": "Penalty",
                     "own_goal": "Own goal"}
 
-# Tournament stages in order, with a chartkit palette slot each (six of the
-# eight categorical slots — all well-separated for CVD).
+# Category orderings used as color-scale domains (colors come from the live
+# categorical scheme, see categorical_scheme_param). Stage runs group stage →
+# final; position is the three outfield groups (goalkeepers don't shoot).
 STAGE_ORDER = ["Group Stage", "Round of 16", "Quarter-finals",
                "Semi-finals", "3rd Place Final", "Final"]
-STAGE_RANGE = chartkit.PALETTE[:6]
-
-# Outfield position groups (goalkeepers don't shoot, so they're dropped), each
-# with a chartkit palette slot. Three well-separated categories — the World Cup
-# analogue of the cars example's three "Origin" values.
 POSITION_ORDER = ["Defender", "Midfielder", "Forward"]
-POSITION_RANGE = chartkit.PALETTE[:3]
 
-# Categorical color schemes offered by the passing chart's scheme picker. Values
-# are Vega scheme names (bound live to the color scale); labels are what the
-# dropdown shows. All four separate three categories clearly.
-SCHEME_OPTIONS = ["category10", "dark2", "tableau10", "set2"]
-SCHEME_LABELS = ["Category 10", "Dark 2", "Tableau 10", "Set 2 (soft)"]
+# Categorical color schemes (for charts that color by a category). Values are
+# Vega scheme names, bound live into the color scale; labels are the dropdown
+# text. All four separate the categories clearly.
+CAT_SCHEME_OPTIONS = ["category10", "dark2", "tableau10", "set2"]
+CAT_SCHEME_LABELS = ["Category 10", "Dark 2", "Tableau 10", "Set 2 (soft)"]
+
+# Sequential color ramps (for the heatmap's magnitude/count scale).
+SEQ_SCHEME_OPTIONS = ["viridis", "magma", "blues", "greens"]
+SEQ_SCHEME_LABELS = ["Viridis", "Magma", "Blues", "Greens"]
+
+
+def categorical_scheme_param():
+    """A 'Category colors' dropdown, bound to the categorical color scheme.
+
+    Reference it in any color scale with ``scheme=alt.ExprRef(expr="cat_scheme")``.
+    Pass one instance to several charts (and add it once at the enclosing level)
+    to drive all their categorical colors from a single control.
+    """
+    return alt.param(
+        name="cat_scheme", value=CAT_SCHEME_OPTIONS[0],
+        bind=alt.binding_select(options=CAT_SCHEME_OPTIONS,
+                                labels=CAT_SCHEME_LABELS,
+                                name="Category colors "))
+
+
+def sequential_scheme_param():
+    """A 'Heatmap colors' dropdown, bound to the sequential color ramp.
+
+    Reference it with ``scheme=alt.ExprRef(expr="seq_scheme")``.
+    """
+    return alt.param(
+        name="seq_scheme", value=SEQ_SCHEME_OPTIONS[0],
+        bind=alt.binding_select(options=SEQ_SCHEME_OPTIONS,
+                                labels=SEQ_SCHEME_LABELS,
+                                name="Heatmap colors "))
 
 # StatsBomb stores full legal names, so the last token isn't always the
 # familiar one (e.g. Mbappé is recorded as "Kylian Mbappé Lottin"). Override
@@ -341,13 +366,18 @@ def histogram_goal_minutes(goals=None, step=5, save=False):
 # --------------------------------------------------------------------------- #
 # 5. Heatmap  —  mark_rect
 # --------------------------------------------------------------------------- #
-def heatmap_team_phase(goals=None, save=False):
+def heatmap_team_phase(goals=None, scheme_param=None, save=False):
     """Heatmap: goals by team (rows) x 15-minute phase (columns).
 
     Two categorical axes with a magnitude in each cell — the rect/heatmap's
-    natural job. A single-hue sequential ramp (chartkit's ``viridis``) encodes
-    count; a 2px surface gap separates the cells. Rows are ordered by total
-    goals so the busiest teams rise to the top.
+    natural job. A sequential ramp encodes count; a 2px surface gap separates
+    the cells. Rows are ordered by total goals so the busiest teams rise to the
+    top.
+
+    The ramp is chosen live by a **"Heatmap colors" dropdown**. Pass a shared
+    :func:`sequential_scheme_param` as ``scheme_param`` (and add it once at the
+    enclosing level) to drive it from an external control; leave it ``None`` and
+    the chart supplies its own dropdown.
     """
     g = _goals(goals).copy()
     edges = [0, 15, 30, 45, 60, 75, 90, 120]
@@ -359,25 +389,30 @@ def heatmap_team_phase(goals=None, save=False):
               .size().rename(columns={"size": "goals"}))
     order = (g.groupby("team").size().sort_values(ascending=False).index.tolist())
 
+    owns_param = scheme_param is None
+    seq = scheme_param or sequential_scheme_param()
+
     chart = alt.Chart(counts).mark_rect(stroke=chartkit.SURFACE,
                                         strokeWidth=2).encode(
         x=alt.X("phase:N", sort=labels, title="Match phase (minutes)"),
         y=alt.Y("team:N", sort=order, title=None),
         color=alt.Color("goals:Q", title="Goals",
-                        scale=alt.Scale(scheme=chartkit.SEQUENTIAL)),
+                        scale=alt.Scale(scheme=alt.ExprRef(expr="seq_scheme"))),
         tooltip=[alt.Tooltip("team:N", title="Team"),
                  alt.Tooltip("phase:N", title="Phase"),
                  alt.Tooltip("goals:Q", title="Goals")],
     ).properties(
         width=440, height=22 * len(order),
         title="Where goals come from — team x match phase")
+    if owns_param:
+        chart = chart.add_params(seq)
     return _save(chart, "alt_heatmap_team_phase") if save else chart
 
 
 # --------------------------------------------------------------------------- #
 # 6. Linked brush  —  interval selection filtering a count-by-category bar chart
 # --------------------------------------------------------------------------- #
-def linked_scatter_position_counts(stats=None, save=False):
+def linked_scatter_position_counts(stats=None, scheme_param=None, save=False):
     """Brushable scatter (xG vs goals) linked to a count-by-position bar chart.
 
     Faithful to Altair's README linked-histogram example (cars → Origin),
@@ -385,12 +420,19 @@ def linked_scatter_position_counts(stats=None, save=False):
     **drag a box** and everything outside it fades to grey while the bars below
     recount how many *selected* players play each position. One
     ``selection_interval`` drives both marks — no manual aggregation.
+
+    Category colors come from a shared ``scheme_param`` (see
+    :func:`categorical_scheme_param`) when one is passed; otherwise the chart
+    adds its own "Category colors" dropdown.
     """
     df = _shooters_by_position(stats)
 
+    owns_param = scheme_param is None
+    cat = scheme_param or categorical_scheme_param()
     color = alt.Color(
         "position_group:N", title="Position",
-        scale=alt.Scale(domain=POSITION_ORDER, range=POSITION_RANGE),
+        scale=alt.Scale(domain=POSITION_ORDER,
+                        scheme=alt.ExprRef(expr="cat_scheme")),
         sort=POSITION_ORDER)
     brush = alt.selection_interval(name="position_brush")
 
@@ -420,13 +462,15 @@ def linked_scatter_position_counts(stats=None, save=False):
 
     chart = alt.vconcat(points, bars).properties(
         title="Who's finishing — brush the scatter to recount by position")
+    if owns_param:
+        chart = chart.add_params(cat)
     return _save(chart, "alt_brush_position_counts") if save else chart
 
 
 # --------------------------------------------------------------------------- #
 # 7. Point paths on hover  —  mark_trail + hover selection + search box
 # --------------------------------------------------------------------------- #
-def scatter_point_paths_hover(stats=None, save=False):
+def scatter_point_paths_hover(stats=None, scheme_param=None, save=False):
     """Scatter of team-matches (xG vs goals) with hover paths and a search box.
 
     Adapted from Altair's "point paths on hover" gallery example. Each team's
@@ -438,8 +482,9 @@ def scatter_point_paths_hover(stats=None, save=False):
       trail, with the match number at each stop and the team name in bold.
     * **Search box** — type part of a team name to spotlight it (others fade).
 
-    Points are colored by tournament stage. One ``mark_trail`` + a hover
-    ``selection_point`` + a search ``param`` — no aggregation.
+    Points are colored by tournament stage. The stage palette follows a shared
+    ``scheme_param`` (see :func:`categorical_scheme_param`) when one is passed;
+    otherwise the chart adds its own "Category colors" dropdown.
     """
     tm = _team_match(stats)
     n_matches = int(tm["match_num"].max())
@@ -468,10 +513,13 @@ def scatter_point_paths_hover(stats=None, save=False):
         y=alt.Y("goals:Q", scale=alt.Scale(zero=False),
                 title="Goals scored in the match"),
         color=alt.Color("stage:N", title="Stage",
-                        scale=alt.Scale(domain=STAGE_ORDER, range=STAGE_RANGE),
+                        scale=alt.Scale(domain=STAGE_ORDER,
+                                        scheme=alt.ExprRef(expr="cat_scheme")),
                         sort=STAGE_ORDER),
         detail="team:N",
     )
+    owns_param = scheme_param is None
+    cat = scheme_param or categorical_scheme_param()
 
     # Circles for the selected match number; opacity spotlights the hovered
     # team and/or the search match (both "empty" states select all → full).
@@ -522,6 +570,8 @@ def scatter_point_paths_hover(stats=None, save=False):
     ).add_params(search_box).properties(
         width=520, height=460,
         title="Each team's path through the World Cup — hover to trace, search to find")
+    if owns_param:
+        chart = chart.add_params(cat)
     return _save(chart, "alt_point_paths_hover") if save else chart
 
 
@@ -555,7 +605,7 @@ def _players_passing(stats: pd.DataFrame | None, min_minutes: int = 90,
                & tot["position_group"].notna()].copy()
 
 
-def linked_scatter_passing(stats=None, save=False):
+def linked_scatter_passing(stats=None, scheme_param=None, save=False):
     """Brush passing volume vs accuracy; count-by-position bars recount selection.
 
     The same linked-brush pattern as :func:`linked_scatter_position_counts`,
@@ -569,21 +619,20 @@ def linked_scatter_passing(stats=None, save=False):
     A **player search box** filters both views to names containing the typed
     text (any part of the full name, case-insensitive); an empty box shows
     everyone. Search and brush compose — search narrows the pool, brush selects
-    within it. A **color-scheme dropdown** switches the position palette live
-    between four categorical schemes.
+    within it. A **"Category colors" dropdown** switches the position palette
+    live; pass a shared ``scheme_param`` to drive it from an external control.
     """
     df = _players_passing(stats)
 
-    # Live color-scheme picker: the selected Vega scheme name is bound straight
-    # into the color scale, so points, bars, and legend all recolor together.
-    scheme = alt.param(
-        name="color_scheme", value=SCHEME_OPTIONS[0],
-        bind=alt.binding_select(options=SCHEME_OPTIONS, labels=SCHEME_LABELS,
-                                name="Colors "))
+    # The selected Vega scheme name is bound straight into the color scale, so
+    # points, bars, and legend recolor together. Shared when scheme_param is
+    # passed; otherwise this chart supplies its own dropdown.
+    owns_param = scheme_param is None
+    scheme = scheme_param or categorical_scheme_param()
     color = alt.Color(
         "position_group:N", title="Position",
         scale=alt.Scale(domain=POSITION_ORDER,
-                        scheme=alt.ExprRef(expr="color_scheme")),
+                        scheme=alt.ExprRef(expr="cat_scheme")),
         sort=POSITION_ORDER)
     brush = alt.selection_interval(name="passing_brush")
 
@@ -621,8 +670,10 @@ def linked_scatter_passing(stats=None, save=False):
     ).transform_filter(brush).transform_filter(name_matches).properties(
         width=460, height=150, title="Selected players by position")
 
-    chart = alt.vconcat(points, bars).add_params(name_search, scheme).properties(
+    chart = alt.vconcat(points, bars).add_params(name_search).properties(
         title="Passing: volume vs accuracy — search a name or brush the cloud")
+    if owns_param:
+        chart = chart.add_params(scheme)
     return _save(chart, "alt_brush_passing") if save else chart
 
 
