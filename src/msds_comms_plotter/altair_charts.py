@@ -753,7 +753,7 @@ def linked_scatter_passing(stats=None, scheme_param=None, save=False):
 # --------------------------------------------------------------------------- #
 # 9. Horizon graph  —  layered clipped areas (shots per match minute)
 # --------------------------------------------------------------------------- #
-def horizon_shots_per_minute(shots=None, bands=3, max_minute=90,
+def horizon_shots_per_minute(shots=None, bands=4, max_minute=90,
                              scheme_param=None, save=False):
     """Horizon graph: shots per match minute across the whole tournament.
 
