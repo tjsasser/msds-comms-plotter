@@ -110,6 +110,7 @@ if `vl-convert-python` is installed, a static `.png` to `reports/figures/`:
 | Heatmap | `mark_rect` | `alt_heatmap_team_phase` | Goals by team (rows) × 15-minute phase (cols), sequential `viridis` shading. |
 | Linked brush | `mark_point` + `mark_bar` | `alt_brush_position_counts` | Scatter colored by position; drag a box and the count-by-position bars below recount only the selected players, while unselected points fade to grey (`selection_interval`). Mirrors Altair's README linked-histogram example. |
 | Point paths on hover | `mark_trail` + `mark_circle` | `alt_point_paths_hover` | Team-match scatter (xG vs goals, colored by stage). A match-number slider, hover to trace a team's whole path through the tournament, and a search box to spotlight a team by name. |
+| Linked brush (synthetic) | `mark_point` + `mark_bar` | `alt_brush_random_demo` | The same linked-brush interaction on a **synthetic** ~400-point cloud (three "makes", negative power/efficiency correlation) shaped to resemble Altair's cars scatter. Not World Cup data — a demo of the pattern on a fuller, continuous cloud. Seeded, so it's reproducible. |
 
 **Interactivity:** every chart has hover tooltips. The line and scatter charts
 also zoom (scroll) and pan (drag). The linked-brush chart filters its bar view

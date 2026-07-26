@@ -512,6 +512,78 @@ def scatter_point_paths_hover(stats=None, save=False):
     return _save(chart, "alt_point_paths_hover") if save else chart
 
 
+# --------------------------------------------------------------------------- #
+# 8. Linked brush on synthetic data  —  a fuller cloud, same interaction
+# --------------------------------------------------------------------------- #
+# Synthetic "makes" for the demo cloud: label, x-centre, x-spread, count. Make C
+# is shifted to high power / low efficiency, the way the cars example's USA
+# points sit low-MPG / high-horsepower.
+_DEMO_MAKES = [("Make A", 90, 20, 130),
+               ("Make B", 115, 24, 120),
+               ("Make C", 185, 30, 150)]
+DEMO_ORDER = [m[0] for m in _DEMO_MAKES]
+DEMO_RANGE = chartkit.PALETTE[:3]
+
+
+def _random_cloud(seed: int = 42) -> pd.DataFrame:
+    """A synthetic power-vs-efficiency cloud: 3 makes, negative correlation.
+
+    Deterministic given ``seed``. Shaped to resemble the Altair cars example
+    (Horsepower vs MPG) — a fuller, continuous scatter than the discrete
+    World Cup goal counts.
+    """
+    import numpy as np
+    rng = np.random.default_rng(seed)
+    frames = []
+    for make, x_centre, x_spread, n in _DEMO_MAKES:
+        power = rng.normal(x_centre, x_spread, n).clip(40, 260)
+        efficiency = (55 - 0.16 * power + rng.normal(0, 4, n)).clip(8, 52)
+        frames.append(pd.DataFrame({"make": make,
+                                    "power": power.round(1),
+                                    "efficiency": efficiency.round(1)}))
+    return pd.concat(frames, ignore_index=True)
+
+
+def linked_scatter_random_demo(seed: int = 42, save=False):
+    """The linked-brush pattern on a synthetic cloud that looks like the example.
+
+    Same interaction as :func:`linked_scatter_position_counts` — brush the
+    scatter, the count-by-category bars below recount the selection, unselected
+    points fade to grey — but on a larger, continuous **randomly generated**
+    dataset (three "makes", negative power/efficiency correlation) so the cloud
+    resembles Altair's cars scatter rather than the discrete goal counts.
+    """
+    df = _random_cloud(seed)
+
+    color = alt.Color(
+        "make:N", title="Make",
+        scale=alt.Scale(domain=DEMO_ORDER, range=DEMO_RANGE), sort=DEMO_ORDER)
+    brush = alt.selection_interval()
+
+    points = alt.Chart(df).mark_point(filled=True, size=60).encode(
+        x=alt.X("power:Q", scale=alt.Scale(zero=False), title="Power"),
+        y=alt.Y("efficiency:Q", scale=alt.Scale(zero=False), title="Efficiency"),
+        color=alt.when(brush).then(color).otherwise(alt.value("#cbcac4")),
+        tooltip=[alt.Tooltip("make:N", title="Make"),
+                 alt.Tooltip("power:Q", title="Power"),
+                 alt.Tooltip("efficiency:Q", title="Efficiency")],
+    ).add_params(brush).properties(
+        width=460, height=360, title="Drag a box to select points →")
+
+    bars = alt.Chart(df).mark_bar().encode(
+        y=alt.Y("make:N", sort=DEMO_ORDER, title=None),
+        x=alt.X("count():Q", title="Points selected"),
+        color=color,
+        tooltip=[alt.Tooltip("make:N", title="Make"),
+                 alt.Tooltip("count():Q", title="Points")],
+    ).transform_filter(brush).properties(
+        width=460, height=150, title="Selected points by make")
+
+    chart = alt.vconcat(points, bars).properties(
+        title="Linked brush on synthetic data (≈400 random points)")
+    return _save(chart, "alt_brush_random_demo") if save else chart
+
+
 ALL_CHARTS = [
     bar_goals_by_team,
     line_cumulative_goals,
@@ -520,6 +592,7 @@ ALL_CHARTS = [
     heatmap_team_phase,
     linked_scatter_position_counts,
     scatter_point_paths_hover,
+    linked_scatter_random_demo,
 ]
 
 
@@ -534,6 +607,7 @@ def main():
     heatmap_team_phase(goals=goals, save=True)
     linked_scatter_position_counts(stats=stats, save=True)
     scatter_point_paths_hover(stats=stats, save=True)
+    linked_scatter_random_demo(save=True)
 
 
 if __name__ == "__main__":
