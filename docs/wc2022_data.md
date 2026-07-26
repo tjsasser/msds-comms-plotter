@@ -120,10 +120,11 @@ paths, and a team search box. (Static PNGs capture only the initial state — th
 slider/hover/search interactions need the HTML in a browser.)
 
 **Shared color controls (gallery).** The example gallery
-(`examples/show_wc2022_charts.py`) exposes two dropdowns that recolor multiple
-charts at once, built from `categorical_scheme_param()` and
-`sequential_scheme_param()` (each created once and handed to the charts that
-use it):
+(`examples/show_wc2022_charts.py`) pins two dropdowns to the **top** of the page
+(a sticky bar) that recolor multiple charts at once. Because Vega-Lite only ever
+renders its own bound inputs at the bottom, the gallery leaves the color params
+*unbound* and injects real `<select>` elements at the top, wiring them to the
+Vega view's `cat_scheme` / `seq_scheme` signals. The two schemes:
 
 - **Category colors** — one categorical scheme (Category 10 / Dark 2 /
   Tableau 10 / Set 2) applied to *every* chart that colors by a category: the
