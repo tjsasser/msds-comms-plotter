@@ -56,6 +56,12 @@ STAGE_ORDER = ["Group Stage", "Round of 16", "Quarter-finals",
                "Semi-finals", "3rd Place Final", "Final"]
 STAGE_RANGE = chartkit.PALETTE[:6]
 
+# Outfield position groups (goalkeepers don't shoot, so they're dropped), each
+# with a chartkit palette slot. Three well-separated categories — the World Cup
+# analogue of the cars example's three "Origin" values.
+POSITION_ORDER = ["Defender", "Midfielder", "Forward"]
+POSITION_RANGE = chartkit.PALETTE[:3]
+
 # StatsBomb stores full legal names, so the last token isn't always the
 # familiar one (e.g. Mbappé is recorded as "Kylian Mbappé Lottin"). Override
 # the handful of stars we direct-label; everything else falls back to the
@@ -105,6 +111,47 @@ def _team_match(stats: pd.DataFrame | None) -> pd.DataFrame:
     tm = tm.sort_values(["team", "match_date"])
     tm["match_num"] = tm.groupby("team").cumcount() + 1
     return tm
+
+
+def _position_group(pos):
+    """Collapse a detailed StatsBomb position into a broad outfield group.
+
+    Order matters: "Wing Back" contains "Back", so defenders are matched before
+    wingers. Goalkeepers and unknown positions return ``None`` (dropped).
+    """
+    if not isinstance(pos, str):
+        return None
+    if "Goalkeeper" in pos:
+        return None
+    if "Back" in pos:
+        return "Defender"
+    if "Midfield" in pos:
+        return "Midfielder"
+    if "Wing" in pos or "Forward" in pos:
+        return "Forward"
+    return None
+
+
+def _shooters_by_position(stats: pd.DataFrame | None) -> pd.DataFrame:
+    """Per-player totals (goals, xG, shots) plus a broad position group.
+
+    Each player's group is the most common of the positions they played.
+    Restricted to outfield players who took at least one shot, so the scatter
+    shows finishers and the position bars have something to count.
+    """
+    if stats is None:
+        stats = worldcup.build_all()
+    s = stats.copy()
+    s["_grp"] = s["position"].map(_position_group)
+    modal = (s.dropna(subset=["_grp"]).groupby(["player", "team"])["_grp"]
+             .agg(lambda x: x.mode().iloc[0]).rename("position_group")
+             .reset_index())
+    tot = (stats.groupby(["player", "team"], as_index=False)
+           .agg(goals=("goals", "sum"), xg=("xg", "sum"),
+                shots=("shots", "sum")))
+    tot["xg"] = tot["xg"].round(2)
+    tot = tot.merge(modal, on=["player", "team"], how="left")
+    return tot[(tot["shots"] >= 1) & tot["position_group"].notna()].copy()
 
 
 def _register_png_fonts() -> None:
@@ -315,53 +362,52 @@ def heatmap_team_phase(goals=None, save=False):
 
 
 # --------------------------------------------------------------------------- #
-# 6. Linked brush  —  interval selection filtering a second view
+# 6. Linked brush  —  interval selection filtering a count-by-category bar chart
 # --------------------------------------------------------------------------- #
-def linked_scatter_goals_by_team(stats=None, min_shots=6, save=False):
-    """Brushable scatter (xG vs goals) linked to a goals-by-team bar chart.
+def linked_scatter_position_counts(stats=None, save=False):
+    """Brushable scatter (xG vs goals) linked to a count-by-position bar chart.
 
-    Altair's signature interaction: **drag a box** on the scatter and the bars
-    below re-aggregate to only the players inside the selection. Points outside
-    the box fade to grey; with nothing selected, the bars show every player.
-    A cross-view demo — one ``selection_interval`` drives both marks.
+    Faithful to Altair's README linked-histogram example (cars → Origin),
+    mapped to the World Cup: points are colored by the player's **position**;
+    **drag a box** and everything outside it fades to grey while the bars below
+    recount how many *selected* players play each position. One
+    ``selection_interval`` drives both marks — no manual aggregation.
     """
-    tot = _player_totals(stats)
-    tot = tot[tot["shots"] >= min_shots].copy()
+    df = _shooters_by_position(stats)
 
-    hi = max(tot["goals"].max(), tot["xg"].max()) + 0.5
-    brush = alt.selection_interval(encodings=["x", "y"])
+    color = alt.Color(
+        "position_group:N", title="Position",
+        scale=alt.Scale(domain=POSITION_ORDER, range=POSITION_RANGE),
+        sort=POSITION_ORDER)
+    brush = alt.selection_interval()
 
-    diagonal = alt.Chart(pd.DataFrame({"v": [0, hi]})).mark_line(
-        color=chartkit.MUTED, strokeDash=[4, 4]).encode(x="v:Q", y="v:Q")
-    points = alt.Chart(tot).mark_point(filled=True, size=70).encode(
-        x=alt.X("xg:Q", title="Expected goals (xG)",
-                scale=alt.Scale(domain=[0, hi])),
-        y=alt.Y("goals:Q", title="Goals scored",
-                scale=alt.Scale(domain=[0, hi])),
-        # Selected points keep the brand hue; the rest recede to grey.
-        color=alt.condition(brush, alt.value(chartkit.PALETTE[0]),
-                            alt.value("#cbcac4")),
+    points = alt.Chart(df).mark_point(filled=True, size=70).encode(
+        x=alt.X("xg:Q", scale=alt.Scale(zero=False),
+                title="Expected goals (xG)"),
+        y=alt.Y("goals:Q", title="Goals scored"),
+        # Selected points keep their position color; the rest fade to grey.
+        color=alt.when(brush).then(color).otherwise(alt.value("#cbcac4")),
         tooltip=[alt.Tooltip("player:N", title="Player"),
                  alt.Tooltip("team:N", title="Team"),
+                 alt.Tooltip("position_group:N", title="Position"),
                  alt.Tooltip("goals:Q", title="Goals"),
                  alt.Tooltip("xg:Q", title="xG")],
-    ).add_params(brush)
-    scatter = (diagonal + points).properties(
-        width=460, height=360,
-        title="Drag a box to select players →")
+    ).add_params(brush).properties(
+        width=460, height=340, title="Drag a box to select players →")
 
-    bars = alt.Chart(tot).mark_bar(color=chartkit.PALETTE[0]).encode(
-        x=alt.X("sum(goals):Q", title="Goals scored (selected players)",
+    bars = alt.Chart(df).mark_bar().encode(
+        y=alt.Y("position_group:N", sort=POSITION_ORDER, title=None),
+        x=alt.X("count():Q", title="Players selected",
                 axis=alt.Axis(tickMinStep=1)),
-        y=alt.Y("team:N", sort="-x", title=None),
-        tooltip=[alt.Tooltip("team:N", title="Team"),
-                 alt.Tooltip("sum(goals):Q", title="Goals")],
+        color=color,
+        tooltip=[alt.Tooltip("position_group:N", title="Position"),
+                 alt.Tooltip("count():Q", title="Players")],
     ).transform_filter(brush).properties(
-        width=460, height=360, title="Goals by team — selected players")
+        width=460, height=150, title="Selected players by position")
 
-    chart = alt.vconcat(scatter, bars).properties(
-        title="Finishing, and which teams it comes from")
-    return _save(chart, "alt_linked_scatter_teams") if save else chart
+    chart = alt.vconcat(points, bars).properties(
+        title="Who's finishing — brush the scatter to recount by position")
+    return _save(chart, "alt_brush_position_counts") if save else chart
 
 
 # --------------------------------------------------------------------------- #
@@ -472,7 +518,7 @@ ALL_CHARTS = [
     scatter_xg_vs_goals,
     histogram_goal_minutes,
     heatmap_team_phase,
-    linked_scatter_goals_by_team,
+    linked_scatter_position_counts,
     scatter_point_paths_hover,
 ]
 
@@ -486,7 +532,7 @@ def main():
     scatter_xg_vs_goals(stats=stats, save=True)
     histogram_goal_minutes(goals=goals, save=True)
     heatmap_team_phase(goals=goals, save=True)
-    linked_scatter_goals_by_team(stats=stats, save=True)
+    linked_scatter_position_counts(stats=stats, save=True)
     scatter_point_paths_hover(stats=stats, save=True)
 
 

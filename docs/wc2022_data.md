@@ -108,7 +108,7 @@ if `vl-convert-python` is installed, a static `.png` to `reports/figures/`:
 | Scatter plot | `mark_point` | `alt_scatter_xg_vs_goals` | Player xG vs actual goals, with a y = x reference line; standouts labeled. |
 | Histogram | `mark_bar` (binned) | `alt_hist_goal_minutes` | Distribution of goals by match minute (5-min bins), with 45'/90' markers. |
 | Heatmap | `mark_rect` | `alt_heatmap_team_phase` | Goals by team (rows) × 15-minute phase (cols), sequential `viridis` shading. |
-| Linked brush | `mark_point` + `mark_bar` | `alt_linked_scatter_teams` | Drag a box on the xG-vs-goals scatter; the goals-by-team bars below re-aggregate to only the selected players (`selection_interval`). |
+| Linked brush | `mark_point` + `mark_bar` | `alt_brush_position_counts` | Scatter colored by position; drag a box and the count-by-position bars below recount only the selected players, while unselected points fade to grey (`selection_interval`). Mirrors Altair's README linked-histogram example. |
 | Point paths on hover | `mark_trail` + `mark_circle` | `alt_point_paths_hover` | Team-match scatter (xG vs goals, colored by stage). A match-number slider, hover to trace a team's whole path through the tournament, and a search box to spotlight a team by name. |
 
 **Interactivity:** every chart has hover tooltips. The line and scatter charts

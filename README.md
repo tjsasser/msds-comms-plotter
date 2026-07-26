@@ -276,9 +276,10 @@ page, and opens it in your default web browser. Every chart has **hover
 tooltips**; the **line and scatter charts also support zoom and pan**
 (scroll/drag) — the bar, histogram, and heatmap have categorical or binned axes
 where zoom isn't meaningful, so they're tooltip-only. The **linked brush** chart
-lets you drag a box on the xG-vs-goals scatter so the goals-by-team bars below
-re-aggregate to only the players you selected. The **point-paths** chart adds a
-match-number slider, hover-to-trace team paths, and a team **search box**.
+lets you drag a box on the xG-vs-goals scatter (colored by position) so the
+count-by-position bars below recount only the players you selected. The
+**point-paths** chart adds a match-number slider, hover-to-trace team paths, and
+a team **search box**.
 
 ```bash
 python examples/show_wc2022_charts.py
@@ -318,7 +319,7 @@ run the whole module:
 from msds_comms_plotter import altair_charts as ac
 ac.scatter_xg_vs_goals()            # returns an alt.Chart; renders in Jupyter / VS Code
 ac.bar_goals_by_team()              # bar / line / scatter / histogram / heatmap
-ac.linked_scatter_goals_by_team()   # brush a box on the scatter → bars below refilter
+ac.linked_scatter_position_counts() # brush a box on the scatter → bars below recount
 ac.scatter_point_paths_hover()      # hover to trace a team's path; slider + search box
 ```
 
