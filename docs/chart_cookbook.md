@@ -215,10 +215,15 @@ python examples/show_wc2022_charts.py
 ## Full program: the "Passing: volume vs accuracy" chart
 
 Everything above is trimmed to the essential mark + encode. Here is a
-**complete, runnable program** that builds the passing chart from scratch —
-data prep, position grouping, the brush, the player-name search box, the live
-color-scheme dropdown, and the linked count-by-position bars. Save it as
-`passing_demo.py` and run `python passing_demo.py`; it writes
+**complete, runnable program** that builds the passing chart from scratch. It's
+organized into small functions so each step is easy to read on its own:
+
+- `position_group()` — turn a detailed position into Defender / Midfielder / Forward
+- `load_players()` — all the pandas data prep, returning one clean table
+- `build_chart()` — the Altair chart, with its three interactions grouped and labeled
+- `main()` — wire it together and save
+
+Save it as `passing_demo.py` and run `python passing_demo.py`; it writes
 `passing_demo.html` (open it in a browser). It reads the committed
 `wc2022_player_match_stats.parquet`, so no raw data or network is needed.
 
@@ -226,11 +231,15 @@ color-scheme dropdown, and the linked count-by-position bars. Save it as
 
 ```python
 #!/usr/bin/env python3
-"""Passing: volume vs accuracy — a complete, runnable Altair program.
+"""Passing: volume vs accuracy — a complete, readable Altair program.
 
-A scatter of passes attempted vs pass-completion %, colored by position, with
-a drag-to-select brush, a player-name search box, a live color-scheme dropdown,
-and a count-by-position bar chart that recounts the current selection.
+A scatter of passes attempted vs pass-completion %, colored by position, with:
+  * a drag-to-select brush,
+  * a player-name search box,
+  * a live color-scheme dropdown, and
+  * a count-by-position bar chart that recounts the current selection.
+
+Run it:  python passing_demo.py   ->  writes passing_demo.html (open in a browser)
 """
 
 import altair as alt
@@ -238,90 +247,144 @@ import pandas as pd
 
 from msds_comms_plotter import chartkit, worldcup
 
-# 1. Shared look: JetBrains Mono, shared palette, minimal chrome.
-chartkit.enable_altair_theme()
-
-# 2. Load the per-player-per-match table (committed parquet — no raw needed).
-stats = pd.read_parquet(
-    worldcup.PROCESSED_DIR / "wc2022_player_match_stats.parquet")
-
-# 3. Collapse StatsBomb's detailed positions into three outfield groups.
 POSITION_ORDER = ["Defender", "Midfielder", "Forward"]
+COLOR_SCHEMES = ["category10", "dark2", "tableau10", "set2"]
+GREY = "#cbcac4"                       # points outside the brush fade to this
 
 
-def position_group(pos):
-    if not isinstance(pos, str) or "Goalkeeper" in pos:
+def position_group(position):
+    """Collapse a detailed StatsBomb position into one broad outfield group.
+
+    Returns None for goalkeepers and anything unrecognized (they get dropped).
+    "Back" is checked before "Wing" so that a "Wing Back" counts as a Defender.
+    """
+    if not isinstance(position, str) or "Goalkeeper" in position:
         return None
-    if "Back" in pos:              # matches "Wing Back" too — check before Wing
+    if "Back" in position:
         return "Defender"
-    if "Midfield" in pos:
+    if "Midfield" in position:
         return "Midfielder"
-    if "Wing" in pos or "Forward" in pos:
+    if "Wing" in position or "Forward" in position:
         return "Forward"
     return None
 
 
-stats = stats.assign(_grp=stats["position"].map(position_group))
-modal = (stats.dropna(subset=["_grp"])
-         .groupby(["player", "team"])["_grp"]
-         .agg(lambda s: s.mode().iloc[0])
-         .rename("position_group").reset_index())
+def load_players():
+    """Return one row per player: passing volume, accuracy, and position."""
+    # The committed table has one row per player per match.
+    path = worldcup.PROCESSED_DIR / "wc2022_player_match_stats.parquet"
+    per_match = pd.read_parquet(path)
 
-# 4. Per-player passing totals: volume (passes) and accuracy (completion %).
-players = (stats.groupby(["player", "team"], as_index=False)
-           .agg(passes=("passes", "sum"),
-                passes_completed=("passes_completed", "sum"),
-                minutes=("minutes_played", "sum"))
-           .merge(modal, on=["player", "team"], how="left"))
-players["completion_pct"] = (players["passes_completed"]
-                             / players["passes"] * 100).round(1)
-players = players[(players["minutes"] >= 90)
-                  & (players["passes"] >= 20)
-                  & players["position_group"].notna()]
+    # Each player's group is the position they most often played.
+    per_match["group"] = per_match["position"].map(position_group)
+    groups = (
+        per_match.dropna(subset=["group"])
+        .groupby(["player", "team"])["group"]
+        .agg(lambda s: s.mode().iloc[0])
+        .reset_index()
+    )
 
-# 5. Interactions.
-brush = alt.selection_interval()                      # drag a box
+    # Add up each player's passes and minutes across all their matches.
+    totals = per_match.groupby(["player", "team"], as_index=False).agg(
+        passes=("passes", "sum"),
+        completed=("passes_completed", "sum"),
+        minutes=("minutes_played", "sum"),
+    )
 
-SCHEMES = ["category10", "dark2", "tableau10", "set2"]
-scheme = alt.param(                                   # live color-scheme dropdown
-    name="cat_scheme", value=SCHEMES[0],
-    bind=alt.binding_select(options=SCHEMES, name="Colors "))
-color = alt.Color(
-    "position_group:N", title="Position", sort=POSITION_ORDER,
-    scale=alt.Scale(domain=POSITION_ORDER,
-                    scheme=alt.ExprRef(expr="cat_scheme")))
+    players = totals.merge(groups, on=["player", "team"])   # drops keeper rows
+    players["completion_pct"] = (
+        players["completed"] / players["passes"] * 100
+    ).round(1)
 
-search = alt.param(                                   # player-name search box
-    name="player_search", value="",
-    bind=alt.binding(input="search", placeholder="e.g. Messi", name="Player "))
-name_matches = alt.expr.test(alt.expr.regexp(search, "i"), alt.datum.player)
+    # Keep only players with enough involvement for the rates to mean something.
+    enough_time = players["minutes"] >= 90
+    enough_passes = players["passes"] >= 20
+    return players[enough_time & enough_passes]
 
-# 6. The two linked views: scatter on top, count-by-position bars below.
-points = alt.Chart(players).mark_point(filled=True, size=60).encode(
-    x=alt.X("passes:Q", title="Passes attempted"),
-    y=alt.Y("completion_pct:Q", scale=alt.Scale(zero=False),
-            title="Pass completion (%)"),
-    # selected points keep their position color; the rest fade to grey
-    color=alt.when(brush).then(color).otherwise(alt.value("#cbcac4")),
-    tooltip=["player:N", "team:N", "position_group:N", "passes:Q",
-             "completion_pct:Q"],
-).transform_filter(name_matches).add_params(brush).properties(
-    width=460, height=360, title="Drag a box to select players →")
 
-bars = alt.Chart(players).mark_bar().encode(
-    y=alt.Y("position_group:N", sort=POSITION_ORDER, title=None),
-    x=alt.X("count():Q", title="Players selected"),
-    color=color,
-    tooltip=["position_group:N", "count():Q"],
-).transform_filter(brush).transform_filter(name_matches).properties(
-    width=460, height=150, title="Selected players by position")
+def build_chart(players):
+    """Assemble the linked scatter + bars with all three interactions."""
+    # --- interactions ----------------------------------------------------
+    brush = alt.selection_interval()             # drag a box on the scatter
 
-chart = alt.vconcat(points, bars).add_params(search, scheme).properties(
-    title="Passing: volume vs accuracy")
+    # Dropdown that swaps the categorical color scheme live.
+    scheme_picker = alt.param(
+        name="cat_scheme",
+        value=COLOR_SCHEMES[0],
+        bind=alt.binding_select(options=COLOR_SCHEMES, name="Colors "),
+    )
+    by_position = alt.Color(
+        "group:N",
+        title="Position",
+        sort=POSITION_ORDER,
+        scale=alt.Scale(domain=POSITION_ORDER,
+                        scheme=alt.ExprRef(expr="cat_scheme")),
+    )
 
-# 7. Save as interactive HTML (add inline=True to embed Vega for offline use).
-chart.save("passing_demo.html")
-print("Wrote passing_demo.html — open it in a browser.")
+    # Text box: a player is kept when their name contains what you type.
+    search_box = alt.param(
+        name="player_search",
+        value="",
+        bind=alt.binding(input="search", placeholder="e.g. Messi",
+                         name="Player "),
+    )
+    name_matches = alt.expr.test(
+        alt.expr.regexp(search_box, "i"), alt.datum.player
+    )
+
+    # --- top view: the scatter -------------------------------------------
+    scatter = (
+        alt.Chart(players)
+        .mark_point(filled=True, size=60)
+        .encode(
+            x=alt.X("passes:Q", title="Passes attempted"),
+            y=alt.Y("completion_pct:Q", title="Pass completion (%)",
+                    scale=alt.Scale(zero=False)),
+            # inside the box keep the position color; outside fade to grey
+            color=alt.when(brush).then(by_position).otherwise(alt.value(GREY)),
+            tooltip=["player:N", "team:N", "group:N",
+                     "passes:Q", "completion_pct:Q"],
+        )
+        .transform_filter(name_matches)
+        .add_params(brush)
+        .properties(width=460, height=360,
+                    title="Drag a box to select players →")
+    )
+
+    # --- bottom view: how many selected players play each position -------
+    bars = (
+        alt.Chart(players)
+        .mark_bar()
+        .encode(
+            x=alt.X("count():Q", title="Players selected"),
+            y=alt.Y("group:N", title=None, sort=POSITION_ORDER),
+            color=by_position,
+            tooltip=["group:N", "count():Q"],
+        )
+        .transform_filter(brush)              # only the brushed players...
+        .transform_filter(name_matches)       # ...that also match the search
+        .properties(width=460, height=150,
+                    title="Selected players by position")
+    )
+
+    # Stack the two views and declare the input widgets once.
+    return (
+        alt.vconcat(scatter, bars)
+        .add_params(search_box, scheme_picker)
+        .properties(title="Passing: volume vs accuracy")
+    )
+
+
+def main():
+    chartkit.enable_altair_theme()   # JetBrains Mono, shared palette, minimal chrome
+    players = load_players()
+    chart = build_chart(players)
+    chart.save("passing_demo.html")  # add inline=True to embed Vega for offline use
+    print("Wrote passing_demo.html — open it in a browser.")
+
+
+if __name__ == "__main__":
+    main()
 ```
 
 The library's `ac.linked_scatter_passing()` is this same chart, plus the option
