@@ -2,11 +2,6 @@
 
 Guidance for Claude Code when working in this repository.
 
-## Visualizations
-
-- Use **matplotlib** only for visualizations. Do not use other plotting
-  libraries (e.g. seaborn, plotly, bokeh, altair) for generating plots.
-
 ## Data
 
 - Use only **pandas**, not polars.
