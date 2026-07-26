@@ -5,7 +5,6 @@ uses underscores, so use ``import msds_comms_plotter``.
 """
 
 from msds_comms_plotter import chartkit
-from msds_comms_plotter.core import load_data, summarize
 
-__all__ = ["load_data", "summarize", "chartkit"]
+__all__ = ["chartkit"]
 __version__ = "0.1.0"

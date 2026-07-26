@@ -11,7 +11,6 @@ The package ships three things:
 
 | Module | What it does |
 | --- | --- |
-| `msds_comms_plotter.core` | `load_data` / `summarize` — minimal pandas helpers. |
 | `msds_comms_plotter.plots` | Ready-made matplotlib figures for the World Cup 2022 dataset. |
 | `msds_comms_plotter.altair_charts` | Altair explorations of the same data (bar, line, scatter, histogram, heatmap). |
 | `msds_comms_plotter.chartkit` | Shared theming for matplotlib **and** Altair. |
@@ -324,8 +323,7 @@ dataset columns.
 ```
 msds-comms-plotter/
 ├── src/msds_comms_plotter/
-│   ├── __init__.py       # exposes load_data, summarize, chartkit
-│   ├── core.py           # pandas helpers
+│   ├── __init__.py       # exposes chartkit
 │   ├── chartkit.py       # matplotlib + Altair theming  ← documented above
 │   ├── altair_charts.py  # World Cup 2022 Altair charts (run as a module)
 │   ├── plots.py          # World Cup 2022 matplotlib figures
