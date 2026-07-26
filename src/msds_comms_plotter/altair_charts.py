@@ -291,12 +291,63 @@ def heatmap_team_phase(goals=None, save=False):
     return _save(chart, "alt_heatmap_team_phase") if save else chart
 
 
+# --------------------------------------------------------------------------- #
+# 6. Linked brush  —  interval selection filtering a second view
+# --------------------------------------------------------------------------- #
+def linked_scatter_goals_by_team(stats=None, min_shots=6, save=False):
+    """Brushable scatter (xG vs goals) linked to a goals-by-team bar chart.
+
+    Altair's signature interaction: **drag a box** on the scatter and the bars
+    below re-aggregate to only the players inside the selection. Points outside
+    the box fade to grey; with nothing selected, the bars show every player.
+    A cross-view demo — one ``selection_interval`` drives both marks.
+    """
+    tot = _player_totals(stats)
+    tot = tot[tot["shots"] >= min_shots].copy()
+
+    hi = max(tot["goals"].max(), tot["xg"].max()) + 0.5
+    brush = alt.selection_interval(encodings=["x", "y"])
+
+    diagonal = alt.Chart(pd.DataFrame({"v": [0, hi]})).mark_line(
+        color=chartkit.MUTED, strokeDash=[4, 4]).encode(x="v:Q", y="v:Q")
+    points = alt.Chart(tot).mark_point(filled=True, size=70).encode(
+        x=alt.X("xg:Q", title="Expected goals (xG)",
+                scale=alt.Scale(domain=[0, hi])),
+        y=alt.Y("goals:Q", title="Goals scored",
+                scale=alt.Scale(domain=[0, hi])),
+        # Selected points keep the brand hue; the rest recede to grey.
+        color=alt.condition(brush, alt.value(chartkit.PALETTE[0]),
+                            alt.value("#cbcac4")),
+        tooltip=[alt.Tooltip("player:N", title="Player"),
+                 alt.Tooltip("team:N", title="Team"),
+                 alt.Tooltip("goals:Q", title="Goals"),
+                 alt.Tooltip("xg:Q", title="xG")],
+    ).add_params(brush)
+    scatter = (diagonal + points).properties(
+        width=460, height=360,
+        title="Drag a box to select players →")
+
+    bars = alt.Chart(tot).mark_bar(color=chartkit.PALETTE[0]).encode(
+        x=alt.X("sum(goals):Q", title="Goals scored (selected players)",
+                axis=alt.Axis(tickMinStep=1)),
+        y=alt.Y("team:N", sort="-x", title=None),
+        tooltip=[alt.Tooltip("team:N", title="Team"),
+                 alt.Tooltip("sum(goals):Q", title="Goals")],
+    ).transform_filter(brush).properties(
+        width=460, height=360, title="Goals by team — selected players")
+
+    chart = alt.vconcat(scatter, bars).properties(
+        title="Finishing, and which teams it comes from")
+    return _save(chart, "alt_linked_scatter_teams") if save else chart
+
+
 ALL_CHARTS = [
     bar_goals_by_team,
     line_cumulative_goals,
     scatter_xg_vs_goals,
     histogram_goal_minutes,
     heatmap_team_phase,
+    linked_scatter_goals_by_team,
 ]
 
 
@@ -309,6 +360,7 @@ def main():
     scatter_xg_vs_goals(stats=stats, save=True)
     histogram_goal_minutes(goals=goals, save=True)
     heatmap_team_phase(goals=goals, save=True)
+    linked_scatter_goals_by_team(stats=stats, save=True)
 
 
 if __name__ == "__main__":

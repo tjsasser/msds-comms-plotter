@@ -90,7 +90,8 @@ python -m msds_comms_plotter.plots
 
 `msds_comms_plotter.altair_charts` builds interactive Altair versions of the
 same data, all themed with `chartkit` so they match the matplotlib figures. It
-walks through the five most common Altair chart types — one per mark:
+walks through the five most common Altair chart types — one per mark — plus a
+linked-brush interaction:
 
 ```bash
 python -m msds_comms_plotter.altair_charts
@@ -107,6 +108,12 @@ if `vl-convert-python` is installed, a static `.png` to `reports/figures/`:
 | Scatter plot | `mark_point` | `alt_scatter_xg_vs_goals` | Player xG vs actual goals, with a y = x reference line; standouts labeled. |
 | Histogram | `mark_bar` (binned) | `alt_hist_goal_minutes` | Distribution of goals by match minute (5-min bins), with 45'/90' markers. |
 | Heatmap | `mark_rect` | `alt_heatmap_team_phase` | Goals by team (rows) × 15-minute phase (cols), sequential `viridis` shading. |
+| Linked brush | `mark_point` + `mark_bar` | `alt_linked_scatter_teams` | Drag a box on the xG-vs-goals scatter; the goals-by-team bars below re-aggregate to only the selected players (`selection_interval`). |
+
+**Interactivity:** every chart has hover tooltips. The line and scatter charts
+also zoom (scroll) and pan (drag). The linked-brush chart filters its bar view
+from an interval selection you draw on the scatter — the classic Altair
+crossfilter. (Static PNGs capture only the initial, nothing-selected state.)
 
 **Fonts for PNG export:** the HTML output uses the browser's fonts, but the
 PNG backend (`vl-convert`) does not read system fonts automatically. The module

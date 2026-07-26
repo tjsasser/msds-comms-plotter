@@ -275,7 +275,9 @@ script `examples/show_wc2022_charts.py` builds every chart, stacks them into one
 page, and opens it in your default web browser. Every chart has **hover
 tooltips**; the **line and scatter charts also support zoom and pan**
 (scroll/drag) — the bar, histogram, and heatmap have categorical or binned axes
-where zoom isn't meaningful, so they're tooltip-only:
+where zoom isn't meaningful, so they're tooltip-only. The final chart is a
+**linked brush**: drag a box on the xG-vs-goals scatter and the goals-by-team
+bars below re-aggregate to only the players you selected.
 
 ```bash
 python examples/show_wc2022_charts.py
@@ -313,8 +315,9 @@ run the whole module:
 
 ```python
 from msds_comms_plotter import altair_charts as ac
-ac.scatter_xg_vs_goals()   # returns an alt.Chart; renders in Jupyter / VS Code
-ac.bar_goals_by_team()     # any of: bar / line / scatter / histogram / heatmap
+ac.scatter_xg_vs_goals()            # returns an alt.Chart; renders in Jupyter / VS Code
+ac.bar_goals_by_team()              # bar / line / scatter / histogram / heatmap
+ac.linked_scatter_goals_by_team()   # brush a box on the scatter → bars below refilter
 ```
 
 See [`docs/wc2022_data.md`](docs/wc2022_data.md) for the full chart list and the
