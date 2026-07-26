@@ -347,8 +347,9 @@ ac.scatter_point_paths_hover()      # hover to trace a team's path; slider + sea
 ac.linked_scatter_passing()         # brush + player search + color-scheme dropdown (15 schemes)
 ```
 
-See [`docs/wc2022_data.md`](docs/wc2022_data.md) for the full chart list and the
-dataset columns.
+See the [**chart cookbook**](docs/chart_cookbook.md) for a picture and the core
+Altair code for each chart type, and [`docs/wc2022_data.md`](docs/wc2022_data.md)
+for the full chart list and the dataset columns.
 
 ## Project layout
 
