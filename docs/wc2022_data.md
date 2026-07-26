@@ -109,11 +109,14 @@ if `vl-convert-python` is installed, a static `.png` to `reports/figures/`:
 | Histogram | `mark_bar` (binned) | `alt_hist_goal_minutes` | Distribution of goals by match minute (5-min bins), with 45'/90' markers. |
 | Heatmap | `mark_rect` | `alt_heatmap_team_phase` | Goals by team (rows) × 15-minute phase (cols), sequential `viridis` shading. |
 | Linked brush | `mark_point` + `mark_bar` | `alt_linked_scatter_teams` | Drag a box on the xG-vs-goals scatter; the goals-by-team bars below re-aggregate to only the selected players (`selection_interval`). |
+| Point paths on hover | `mark_trail` + `mark_circle` | `alt_point_paths_hover` | Team-match scatter (xG vs goals, colored by stage). A match-number slider, hover to trace a team's whole path through the tournament, and a search box to spotlight a team by name. |
 
 **Interactivity:** every chart has hover tooltips. The line and scatter charts
 also zoom (scroll) and pan (drag). The linked-brush chart filters its bar view
 from an interval selection you draw on the scatter — the classic Altair
-crossfilter. (Static PNGs capture only the initial, nothing-selected state.)
+crossfilter. The point-paths chart adds a match-number slider, hover-to-trace
+paths, and a team search box. (Static PNGs capture only the initial state — the
+slider/hover/search interactions need the HTML in a browser.)
 
 **Fonts for PNG export:** the HTML output uses the browser's fonts, but the
 PNG backend (`vl-convert`) does not read system fonts automatically. The module

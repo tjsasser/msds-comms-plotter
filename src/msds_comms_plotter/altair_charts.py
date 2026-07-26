@@ -50,6 +50,12 @@ GOAL_TYPE_RANGE = [chartkit.PALETTE[0], chartkit.PALETTE[3], chartkit.PALETTE[4]
 GOAL_TYPE_TITLES = {"open_play": "Open play", "penalty": "Penalty",
                     "own_goal": "Own goal"}
 
+# Tournament stages in order, with a chartkit palette slot each (six of the
+# eight categorical slots — all well-separated for CVD).
+STAGE_ORDER = ["Group Stage", "Round of 16", "Quarter-finals",
+               "Semi-finals", "3rd Place Final", "Final"]
+STAGE_RANGE = chartkit.PALETTE[:6]
+
 # StatsBomb stores full legal names, so the last token isn't always the
 # familiar one (e.g. Mbappé is recorded as "Kylian Mbappé Lottin"). Override
 # the handful of stars we direct-label; everything else falls back to the
@@ -82,6 +88,23 @@ def _player_totals(stats: pd.DataFrame | None) -> pd.DataFrame:
                 shots=("shots", "sum"), minutes=("minutes_played", "sum")))
     tot["xg"] = tot["xg"].round(2)
     return tot
+
+
+def _team_match(stats: pd.DataFrame | None) -> pd.DataFrame:
+    """One row per team per match: team goals, team xG, stage, and match_num.
+
+    ``match_num`` is the team's 1-based match index in date order — its path
+    through the tournament (1 = opening game, up to 7 for the finalists).
+    """
+    if stats is None:
+        stats = worldcup.build_all()
+    tm = (stats.groupby(["team", "match_id", "match_date", "stage"],
+                        as_index=False)
+          .agg(goals=("goals", "sum"), xg=("xg", "sum")))
+    tm["xg"] = tm["xg"].round(2)
+    tm = tm.sort_values(["team", "match_date"])
+    tm["match_num"] = tm.groupby("team").cumcount() + 1
+    return tm
 
 
 def _register_png_fonts() -> None:
@@ -341,6 +364,108 @@ def linked_scatter_goals_by_team(stats=None, min_shots=6, save=False):
     return _save(chart, "alt_linked_scatter_teams") if save else chart
 
 
+# --------------------------------------------------------------------------- #
+# 7. Point paths on hover  —  mark_trail + hover selection + search box
+# --------------------------------------------------------------------------- #
+def scatter_point_paths_hover(stats=None, save=False):
+    """Scatter of team-matches (xG vs goals) with hover paths and a search box.
+
+    Adapted from Altair's "point paths on hover" gallery example. Each team's
+    matches are a trajectory through the tournament (ordered by date). Interact:
+
+    * **Match slider** — pick a match number (1 = opening game … 7 = final);
+      the solid circles show every team's result in that match.
+    * **Hover a team** — traces its whole path across matches as a tapering
+      trail, with the match number at each stop and the team name in bold.
+    * **Search box** — type part of a team name to spotlight it (others fade).
+
+    Points are colored by tournament stage. One ``mark_trail`` + a hover
+    ``selection_point`` + a search ``param`` — no aggregation.
+    """
+    tm = _team_match(stats)
+    n_matches = int(tm["match_num"].max())
+
+    # Match-number slider (like the example's year slider).
+    match_slider = alt.binding_range(min=1, max=n_matches, step=1, name="Match ")
+    match_select = alt.selection_point(
+        name="match_select", fields=["match_num"], bind=match_slider,
+        value=3)
+
+    # Hover on a team. `hover` is empty=False (nothing highlighted until you
+    # hover); `hover_fade` keeps empty=True so "not hovering" selects everyone.
+    hover = alt.selection_point(on="mouseover", fields=["team"], empty=False)
+    hover_fade = alt.selection_point(on="mouseover", fields=["team"])
+
+    # Free-text search over team names.
+    search_box = alt.param(
+        value="",
+        bind=alt.binding(input="search", placeholder="Team", name="Search "))
+    search_matches = alt.expr.test(
+        alt.expr.regexp(search_box, "i"), alt.datum.team)
+
+    base = alt.Chart(tm).encode(
+        x=alt.X("xg:Q", scale=alt.Scale(zero=False),
+                title="Expected goals (xG) in the match"),
+        y=alt.Y("goals:Q", scale=alt.Scale(zero=False),
+                title="Goals scored in the match"),
+        color=alt.Color("stage:N", title="Stage",
+                        scale=alt.Scale(domain=STAGE_ORDER, range=STAGE_RANGE),
+                        sort=STAGE_ORDER),
+        detail="team:N",
+    )
+
+    # Circles for the selected match number; opacity spotlights the hovered
+    # team and/or the search match (both "empty" states select all → full).
+    opacity = (alt.when(hover_fade, search_matches)
+               .then(alt.value(0.85)).otherwise(alt.value(0.12)))
+    visible_points = base.mark_circle(size=110).encode(
+        opacity=opacity,
+        tooltip=[alt.Tooltip("team:N", title="Team"),
+                 alt.Tooltip("stage:N", title="Stage"),
+                 alt.Tooltip("match_num:Q", title="Match #"),
+                 alt.Tooltip("goals:Q", title="Goals"),
+                 alt.Tooltip("xg:Q", title="xG")],
+    ).transform_filter(match_select).add_params(
+        hover, hover_fade, match_select)
+
+    when_hover = alt.when(hover)
+    # The hovered team's full trajectory: a tapering trail plus its points.
+    hover_path = alt.layer(
+        base.mark_trail().encode(
+            order=alt.Order("match_num:Q", sort="ascending"),
+            size=alt.Size("match_num:Q",
+                          scale=alt.Scale(domain=[1, n_matches], range=[1, 12]),
+                          legend=None),
+            opacity=when_hover.then(alt.value(0.35)).otherwise(alt.value(0)),
+            color=alt.value(chartkit.MUTED)),
+        base.mark_point(size=55, filled=True).encode(
+            opacity=when_hover.then(alt.value(0.85)).otherwise(alt.value(0))),
+    )
+
+    # Match-number label at each stop along the hovered trail.
+    match_labels = base.mark_text(align="left", dx=6, dy=-6, fontSize=11).encode(
+        text="match_num:Q", color=alt.value(chartkit.INK),
+        opacity=when_hover.then(alt.value(1)).otherwise(alt.value(0)))
+
+    # The hovered team's name, once, in bold near its best match.
+    team_label = alt.Chart(tm).mark_text(
+        align="left", dx=-15, dy=-22, fontSize=17, fontWeight="bold").encode(
+        x="xg:Q", y="goals:Q", text="team:N", color=alt.value(chartkit.INK),
+        opacity=when_hover.then(alt.value(1)).otherwise(alt.value(0)),
+    ).transform_window(
+        rank="rank(goals)",
+        sort=[alt.SortField("goals", order="descending")],
+        groupby=["team"],
+    ).transform_filter(alt.datum.rank == 1)
+
+    chart = alt.layer(
+        hover_path, visible_points, match_labels, team_label
+    ).add_params(search_box).properties(
+        width=520, height=460,
+        title="Each team's path through the World Cup — hover to trace, search to find")
+    return _save(chart, "alt_point_paths_hover") if save else chart
+
+
 ALL_CHARTS = [
     bar_goals_by_team,
     line_cumulative_goals,
@@ -348,6 +473,7 @@ ALL_CHARTS = [
     histogram_goal_minutes,
     heatmap_team_phase,
     linked_scatter_goals_by_team,
+    scatter_point_paths_hover,
 ]
 
 
@@ -361,6 +487,7 @@ def main():
     histogram_goal_minutes(goals=goals, save=True)
     heatmap_team_phase(goals=goals, save=True)
     linked_scatter_goals_by_team(stats=stats, save=True)
+    scatter_point_paths_hover(stats=stats, save=True)
 
 
 if __name__ == "__main__":

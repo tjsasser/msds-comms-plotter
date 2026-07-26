@@ -65,6 +65,7 @@ def build_gallery() -> alt.VConcatChart:
         ac.histogram_goal_minutes(goals=goals),
         ac.heatmap_team_phase(goals=goals),
         ac.linked_scatter_goals_by_team(stats=stats),  # drag a box to filter
+        ac.scatter_point_paths_hover(stats=stats),      # hover paths + search box
     ]
     # Independent color scales so the heatmap's sequential ramp doesn't leak
     # into the other charts.
