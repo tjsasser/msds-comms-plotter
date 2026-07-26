@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Build the five World Cup 2022 Altair charts and open them in a browser.
 
-Run this for an interactive gallery — hover for tooltips, pan, and zoom:
+Run this for an interactive gallery. Every chart has hover tooltips; the line
+and scatter charts also zoom and pan (scroll to zoom, drag to pan):
 
     python examples/show_wc2022_charts.py
 

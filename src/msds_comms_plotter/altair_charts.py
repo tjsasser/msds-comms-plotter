@@ -145,7 +145,9 @@ def bar_goals_by_team(goals=None, top=12, save=False):
         x=alt.X("goals:Q", title="Goals scored",
                 axis=alt.Axis(tickMinStep=1)),
     )
-    bars = base.mark_bar(color=chartkit.PALETTE[0])
+    bars = base.mark_bar(color=chartkit.PALETTE[0]).encode(
+        tooltip=[alt.Tooltip("team:N", title="Team"),
+                 alt.Tooltip("goals:Q", title="Goals")])
     labels = base.mark_text(align="left", dx=4, color=chartkit.INK).encode(
         text="goals:Q")
     chart = (bars + labels).properties(
@@ -182,7 +184,7 @@ def line_cumulative_goals(goals=None, save=False):
                  alt.Tooltip("cumulative_goals:Q", title="Running total")])
     chart = (line + hover).properties(
         width=560, height=320,
-        title="Goals accumulate across World Cup 2022 (172 total)")
+        title="Goals accumulate across World Cup 2022 (172 total)").interactive()
     return _save(chart, "alt_line_cumulative_goals") if save else chart
 
 
@@ -222,7 +224,7 @@ def scatter_xg_vs_goals(stats=None, min_shots=6, save=False):
         align="left", dx=7, dy=-2, color=chartkit.INK).encode(text="short_name:N")
     chart = (diagonal + points + labels).properties(
         width=460, height=420,
-        title=f"Finishing vs expected — players with ≥ {min_shots} shots")
+        title=f"Finishing vs expected — players with ≥ {min_shots} shots").interactive()
     return _save(chart, "alt_scatter_xg_vs_goals") if save else chart
 
 

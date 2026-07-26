@@ -272,8 +272,10 @@ same data.
 
 **Interactive — open all five in your browser (recommended).** The example
 script `examples/show_wc2022_charts.py` builds every chart, stacks them into one
-page, and opens it in your default web browser so you can hover for tooltips,
-pan, and zoom:
+page, and opens it in your default web browser. Every chart has **hover
+tooltips**; the **line and scatter charts also support zoom and pan**
+(scroll/drag) — the bar, histogram, and heatmap have categorical or binned axes
+where zoom isn't meaningful, so they're tooltip-only:
 
 ```bash
 python examples/show_wc2022_charts.py
