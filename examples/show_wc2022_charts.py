@@ -56,7 +56,7 @@ def _load():
 
 
 def build_gallery() -> alt.VConcatChart:
-    """Assemble all six charts into a single vertically stacked view."""
+    """Assemble all the charts into a single vertically stacked view."""
     goals, stats = _load()
     charts = [
         ac.bar_goals_by_team(goals=goals),
@@ -66,12 +66,13 @@ def build_gallery() -> alt.VConcatChart:
         ac.heatmap_team_phase(goals=goals),
         ac.linked_scatter_position_counts(stats=stats),  # drag a box to recount
         ac.scatter_point_paths_hover(stats=stats),       # hover paths + search box
+        ac.linked_scatter_random_demo(),                 # brush demo, synthetic data
     ]
     # Independent color scales so the heatmap's sequential ramp doesn't leak
     # into the other charts.
     return (alt.vconcat(*charts)
             .resolve_scale(color="independent")
-            .properties(title="World Cup 2022 — an Altair chart gallery"))
+            .properties(title="An Altair chart gallery — World Cup 2022 (+ a synthetic brush demo)"))
 
 
 def main() -> None:
