@@ -57,11 +57,35 @@ STAGE_ORDER = ["Group Stage", "Round of 16", "Quarter-finals",
                "Semi-finals", "3rd Place Final", "Final"]
 POSITION_ORDER = ["Defender", "Midfielder", "Forward"]
 
+# The single-hue charts have no category to color by, but can still follow the
+# live categorical scheme: each takes a distinct slot of it (bars → 1st color,
+# line → 2nd, …) via a constant "series" field on a shared ordered domain.
+STATIC_ORDER = ["Bars", "Line", "Scatter", "Histogram"]
+
+
+def _static_scheme_color(series: str):
+    """Color encoding that pins a single-mark chart to one slot of ``cat_scheme``.
+
+    ``series`` must be one of :data:`STATIC_ORDER`; its index picks the scheme
+    color. No legend (there's only one series). The data must carry a constant
+    ``_series`` column equal to ``series`` (add it with ``.assign`` so every
+    layer shares one data source and axis sorts still resolve).
+    """
+    return alt.Color(
+        "_series:N", legend=None,
+        scale=alt.Scale(domain=STATIC_ORDER,
+                        scheme=alt.ExprRef(expr="cat_scheme")))
+
 # Categorical color schemes (for charts that color by a category). Values are
 # Vega scheme names, bound live into the color scale; labels are the dropdown
-# text. All four separate the categories clearly.
-CAT_SCHEME_OPTIONS = ["category10", "dark2", "tableau10", "set2"]
-CAT_SCHEME_LABELS = ["Category 10", "Dark 2", "Tableau 10", "Set 2 (soft)"]
+# text. Each separates the categories clearly and has enough hues for the
+# six-category stage scale.
+CAT_SCHEME_OPTIONS = ["category10", "dark2", "tableau10", "set2",
+                      "set1", "tableau20", "paired", "accent",
+                      "observable10", "set3"]
+CAT_SCHEME_LABELS = ["Category 10", "Dark 2", "Tableau 10", "Set 2 (soft)",
+                     "Set 1 (bold)", "Tableau 20", "Paired", "Accent",
+                     "Observable 10", "Set 3"]
 
 # Sequential color ramps (for the heatmap's magnitude/count scale).
 SEQ_SCHEME_OPTIONS = ["viridis", "magma", "blues", "greens"]
@@ -229,26 +253,38 @@ def _save(chart: alt.Chart, name: str) -> alt.Chart:
 # --------------------------------------------------------------------------- #
 # 1. Bar chart  —  mark_bar
 # --------------------------------------------------------------------------- #
-def bar_goals_by_team(goals=None, top=12, save=False):
+def bar_goals_by_team(goals=None, top=12, scheme_param=None, save=False):
     """Bar chart: total goals per team (top ``top`` teams), sorted descending.
 
     The canonical magnitude-by-identity chart. One measure across one
     categorical axis, so a single hue is correct — rank is carried by length
     and the sort, not by color. Values are direct-labeled at the bar ends.
+
+    Single-hue by default. Pass a shared ``scheme_param`` (as the gallery does)
+    and the bars instead follow the first slot of the live categorical scheme.
     """
     g = _goals(goals)
     by_team = (g.groupby("team", as_index=False).size()
                .rename(columns={"size": "goals"})
                .sort_values("goals", ascending=False).head(top))
+    by_team = by_team.assign(_series="Bars")
 
+    # Explicit descending order (the frame is already sorted by goals). A plain
+    # sort="-x" stops resolving once the bars carry a color encoding, so pin the
+    # order directly.
+    team_order = by_team["team"].tolist()
     base = alt.Chart(by_team).encode(
-        y=alt.Y("team:N", sort="-x", title=None),
+        y=alt.Y("team:N", sort=team_order, title=None),
         x=alt.X("goals:Q", title="Goals scored",
                 axis=alt.Axis(tickMinStep=1)),
     )
-    bars = base.mark_bar(color=chartkit.PALETTE[0]).encode(
-        tooltip=[alt.Tooltip("team:N", title="Team"),
-                 alt.Tooltip("goals:Q", title="Goals")])
+    tip = [alt.Tooltip("team:N", title="Team"),
+           alt.Tooltip("goals:Q", title="Goals")]
+    if scheme_param is None:
+        bars = base.mark_bar(color=chartkit.PALETTE[0]).encode(tooltip=tip)
+    else:
+        bars = base.mark_bar().encode(
+            color=_static_scheme_color("Bars"), tooltip=tip)
     labels = base.mark_text(align="left", dx=4, color=chartkit.INK).encode(
         text="goals:Q")
     chart = (bars + labels).properties(
@@ -260,25 +296,33 @@ def bar_goals_by_team(goals=None, top=12, save=False):
 # --------------------------------------------------------------------------- #
 # 2. Line chart  —  mark_line
 # --------------------------------------------------------------------------- #
-def line_cumulative_goals(goals=None, save=False):
+def line_cumulative_goals(goals=None, scheme_param=None, save=False):
     """Line chart: cumulative tournament goals over the calendar.
 
     Change-over-time is the line's job. Goals are summed per match-day and
     accumulated, giving a monotone curve from the opening match to the final.
     Points mark each match-day; a crosshair-style tooltip reads off the total.
+
+    Single-hue by default; with a shared ``scheme_param`` the line follows the
+    second slot of the live categorical scheme.
     """
     g = _goals(goals).copy()
     g["match_date"] = pd.to_datetime(g["match_date"])
     daily = (g.groupby("match_date", as_index=False).size()
              .rename(columns={"size": "goals"}).sort_values("match_date"))
     daily["cumulative_goals"] = daily["goals"].cumsum()
+    daily = daily.assign(_series="Line")
 
     base = alt.Chart(daily).encode(
         x=alt.X("match_date:T", title="Match date",
                 axis=alt.Axis(format="%b %d")),
         y=alt.Y("cumulative_goals:Q", title="Cumulative goals"),
     )
-    line = base.mark_line(color=chartkit.PALETTE[0], point=True)
+    if scheme_param is None:
+        line = base.mark_line(color=chartkit.PALETTE[0], point=True)
+    else:
+        line = base.mark_line(point=True).encode(
+            color=_static_scheme_color("Line"))
     hover = base.mark_point(size=80, opacity=0).encode(
         tooltip=[alt.Tooltip("match_date:T", title="Date", format="%b %d"),
                  alt.Tooltip("goals:Q", title="Goals that day"),
@@ -296,17 +340,21 @@ def line_cumulative_goals(goals=None, save=False):
 # --------------------------------------------------------------------------- #
 # 3. Scatter plot  —  mark_point
 # --------------------------------------------------------------------------- #
-def scatter_xg_vs_goals(stats=None, min_shots=6, save=False):
+def scatter_xg_vs_goals(stats=None, min_shots=6, scheme_param=None, save=False):
     """Scatter plot: expected goals (xG) vs actual goals, one dot per player.
 
     Relationship between two measures. A dashed y = x reference line splits
     clinical finishers (above) from the wasteful (below). Only high-volume
     shooters (``>= min_shots``) are plotted to keep the cloud legible; the
     standout scorers are direct-labeled.
+
+    Single-hue by default; with a shared ``scheme_param`` the points follow the
+    third slot of the live categorical scheme.
     """
     tot = _player_totals(stats)
     tot = tot[tot["shots"] >= min_shots].copy()
     tot["short_name"] = tot["player"].map(_short_name)
+    tot["_series"] = "Scatter"
 
     hi = max(tot["goals"].max(), tot["xg"].max()) + 0.5
     diagonal = alt.Chart(pd.DataFrame({"v": [0, hi]})).mark_line(
@@ -323,8 +371,12 @@ def scatter_xg_vs_goals(stats=None, min_shots=6, save=False):
                  alt.Tooltip("xg:Q", title="xG"),
                  alt.Tooltip("shots:Q", title="Shots")],
     )
-    points = base.mark_point(color=chartkit.PALETTE[0], filled=True, size=70,
-                             opacity=0.75)
+    if scheme_param is None:
+        points = base.mark_point(color=chartkit.PALETTE[0], filled=True,
+                                 size=70, opacity=0.75)
+    else:
+        points = base.mark_point(filled=True, size=70, opacity=0.75).encode(
+            color=_static_scheme_color("Scatter"))
     labels = base.transform_filter(alt.datum.goals >= 4).mark_text(
         align="left", dx=7, dy=-2, color=chartkit.INK).encode(text="short_name:N")
     # Named zoom/pan selection — see line_cumulative_goals for why the name
@@ -339,22 +391,30 @@ def scatter_xg_vs_goals(stats=None, min_shots=6, save=False):
 # --------------------------------------------------------------------------- #
 # 4. Histogram  —  mark_bar (binned)
 # --------------------------------------------------------------------------- #
-def histogram_goal_minutes(goals=None, step=5, save=False):
+def histogram_goal_minutes(goals=None, step=5, scheme_param=None, save=False):
     """Histogram: distribution of goals by the match minute they were scored.
 
     A histogram is a bar chart of a *binned continuous* variable — here the
     clock minute, in ``step``-minute bins. It surfaces the well-known late-half
     surges. Single hue; the 45/90-minute half markers give context.
+
+    Single-hue by default; with a shared ``scheme_param`` the bars follow the
+    fourth slot of the live categorical scheme.
     """
     g = _goals(goals)
 
-    bars = alt.Chart(g).mark_bar(color=chartkit.PALETTE[2]).encode(
+    enc = dict(
         x=alt.X("minute:Q", bin=alt.Bin(step=step), title="Match minute"),
         y=alt.Y("count():Q", title="Goals scored"),
         tooltip=[alt.Tooltip("minute:Q", bin=alt.Bin(step=step),
                              title="Minute range"),
-                 alt.Tooltip("count():Q", title="Goals")],
-    )
+                 alt.Tooltip("count():Q", title="Goals")])
+    if scheme_param is None:
+        bars = alt.Chart(g).mark_bar(color=chartkit.PALETTE[2]).encode(**enc)
+    else:
+        # .assign returns a copy — never mutate the shared goals frame.
+        bars = (alt.Chart(g.assign(_series="Histogram")).mark_bar()
+                .encode(color=_static_scheme_color("Histogram"), **enc))
     rules = alt.Chart(pd.DataFrame({"m": [45, 90]})).mark_rule(
         color=chartkit.MUTED, strokeDash=[3, 3]).encode(x="m:Q")
     chart = (bars + rules).properties(

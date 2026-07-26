@@ -76,10 +76,10 @@ def build_gallery() -> alt.VConcatChart:
     # the very bottom of the page, so the chart they control must be last for the
     # controls to sit directly beneath it.
     charts = [
-        ac.bar_goals_by_team(goals=goals),
-        ac.line_cumulative_goals(goals=goals),
-        ac.scatter_xg_vs_goals(stats=stats),
-        ac.histogram_goal_minutes(goals=goals),
+        ac.bar_goals_by_team(goals=goals, scheme_param=cat_scheme),
+        ac.line_cumulative_goals(goals=goals, scheme_param=cat_scheme),
+        ac.scatter_xg_vs_goals(stats=stats, scheme_param=cat_scheme),
+        ac.histogram_goal_minutes(goals=goals, scheme_param=cat_scheme),
         ac.heatmap_team_phase(goals=goals, scheme_param=seq_scheme),
         ac.linked_scatter_position_counts(stats=stats, scheme_param=cat_scheme),
         ac.linked_scatter_passing(stats=stats, scheme_param=cat_scheme),
