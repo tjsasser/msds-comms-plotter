@@ -17,5 +17,10 @@ dependencies = [
     "altair",
 ]
 
+[project.optional-dependencies]
+# Static PNG export for the Altair charts. HTML output works without it;
+# install with `pip install -e ".[png]"` to also write .png files.
+png = ["vl-convert-python"]
+
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -13,6 +13,7 @@ The package ships three things:
 | --- | --- |
 | `msds_comms_plotter.core` | `load_data` / `summarize` — minimal pandas helpers. |
 | `msds_comms_plotter.plots` | Ready-made matplotlib figures for the World Cup 2022 dataset. |
+| `msds_comms_plotter.altair_charts` | Altair explorations of the same data (bar, line, scatter, histogram, heatmap). |
 | `msds_comms_plotter.chartkit` | Shared theming for matplotlib **and** Altair. |
 
 ### About `chartkit`
@@ -139,6 +140,13 @@ Installing the package pulls these in automatically (declared in
 `chartkit` imports matplotlib and Altair **lazily**, inside the functions that
 need them — so importing `chartkit` never fails just because one renderer is
 missing. Use the matplotlib half without Altair installed, or vice versa.
+
+**Optional — static PNG export.** Altair charts save as interactive `.html` out
+of the box. To also write `.png` files, install the extra:
+
+```bash
+python -m pip install -e ".[png]"   # adds vl-convert-python
+```
 
 To register the JetBrains Mono font without a system-wide install, see
 `register_font` in the API below.

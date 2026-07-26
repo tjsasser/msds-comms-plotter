@@ -86,6 +86,34 @@ python -m msds_comms_plotter.plots
 - `goal_bubble.png` — scatter/bubble version of the heatmap: same team x
   time-bin grid, goal count encoded as bubble size; top 3 teams in color.
 
+## Altair charts
+
+`msds_comms_plotter.altair_charts` builds interactive Altair versions of the
+same data, all themed with `chartkit` so they match the matplotlib figures. It
+walks through the five most common Altair chart types — one per mark:
+
+```bash
+python -m msds_comms_plotter.altair_charts
+```
+
+Each builder returns a plain `alt.Chart` (keep chaining `.properties`,
+`.interactive`, …). Run as a script, each writes an interactive `.html` and,
+if `vl-convert-python` is installed, a static `.png` to `reports/figures/`:
+
+| Chart type | Mark | File (`alt_*`) | What it shows |
+|------------|------|----------------|---------------|
+| Bar chart | `mark_bar` | `alt_bar_goals_by_team` | Total goals per team (top N), sorted, value-labeled. |
+| Line chart | `mark_line` | `alt_line_cumulative_goals` | Cumulative goals over the tournament calendar (→ 172). |
+| Scatter plot | `mark_point` | `alt_scatter_xg_vs_goals` | Player xG vs actual goals, with a y = x reference line; standouts labeled. |
+| Histogram | `mark_bar` (binned) | `alt_hist_goal_minutes` | Distribution of goals by match minute (5-min bins), with 45'/90' markers. |
+| Heatmap | `mark_rect` | `alt_heatmap_team_phase` | Goals by team (rows) × 15-minute phase (cols), sequential `viridis` shading. |
+
+**Fonts for PNG export:** the HTML output uses the browser's fonts, but the
+PNG backend (`vl-convert`) does not read system fonts automatically. The module
+best-effort-registers the usual font directories so JetBrains Mono is picked up;
+without the font installed, PNGs fall back to a generic monospace (nothing
+breaks). See `chartkit`'s font note in the top-level README.
+
 ## Notes / validation
 
 - Penalty **shootout** goals (StatsBomb period 5) are excluded from all stats,
