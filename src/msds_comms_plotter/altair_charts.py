@@ -559,6 +559,11 @@ def linked_scatter_passing(stats=None, save=False):
     position; **drag a box** and the bars below recount only the selected
     players while the rest fade to grey. Defenders and midfielders cluster
     high-volume / high-accuracy; forwards spread lower and looser.
+
+    A **player search box** filters both views to names containing the typed
+    text (any part of the full name, case-insensitive); an empty box shows
+    everyone. Search and brush compose — search narrows the pool, brush selects
+    within it.
     """
     df = _players_passing(stats)
 
@@ -567,6 +572,16 @@ def linked_scatter_passing(stats=None, save=False):
         scale=alt.Scale(domain=POSITION_ORDER, range=POSITION_RANGE),
         sort=POSITION_ORDER)
     brush = alt.selection_interval(name="passing_brush")
+
+    # Free-text search over the full player name. Declared at the top level (so
+    # both sub-views can filter on it); an empty string's regexp matches every
+    # name, so the default view shows all players.
+    name_search = alt.param(
+        name="player_search", value="",
+        bind=alt.binding(input="search", placeholder="e.g. Messi",
+                         name="Player "))
+    name_matches = alt.expr.test(
+        alt.expr.regexp(name_search, "i"), alt.datum.player)
 
     points = alt.Chart(df).mark_point(filled=True, size=60).encode(
         x=alt.X("passes:Q", title="Passes attempted"),
@@ -579,7 +594,7 @@ def linked_scatter_passing(stats=None, save=False):
                  alt.Tooltip("passes:Q", title="Passes"),
                  alt.Tooltip("completion_pct:Q", title="Completion %"),
                  alt.Tooltip("minutes:Q", title="Minutes")],
-    ).add_params(brush).properties(
+    ).transform_filter(name_matches).add_params(brush).properties(
         width=460, height=360, title="Drag a box to select players →")
 
     bars = alt.Chart(df).mark_bar().encode(
@@ -589,11 +604,11 @@ def linked_scatter_passing(stats=None, save=False):
         color=color,
         tooltip=[alt.Tooltip("position_group:N", title="Position"),
                  alt.Tooltip("count():Q", title="Players")],
-    ).transform_filter(brush).properties(
+    ).transform_filter(brush).transform_filter(name_matches).properties(
         width=460, height=150, title="Selected players by position")
 
-    chart = alt.vconcat(points, bars).properties(
-        title="Passing: volume vs accuracy — brush to recount by position")
+    chart = alt.vconcat(points, bars).add_params(name_search).properties(
+        title="Passing: volume vs accuracy — search a name or brush the cloud")
     return _save(chart, "alt_brush_passing") if save else chart
 
 
