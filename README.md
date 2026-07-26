@@ -39,13 +39,89 @@ matplotlib figure and an interactive Altair chart look like siblings:
 
 Requires **Python ≥ 3.9**.
 
-Clone the repo and install it (editable install recommended for coursework):
+Install into a **virtual environment (venv)**. This is the recommended (and on
+many systems, required) approach: a modern Python — including the Homebrew
+Python on macOS — is "externally managed" and will refuse a plain
+`pip install` with an `error: externally-managed-environment` (PEP 668). A venv
+sidesteps that entirely by giving the project its own isolated Python and
+`pip`, so you never touch the system install.
+
+### 1. Get the code
 
 ```bash
 git clone https://github.com/tjsasser/msds-comms-plotter.git
 cd msds-comms-plotter
+```
+
+### 2. Create the venv
+
+Run this once, from the repo root. It makes a `.venv/` folder holding a
+private copy of Python (`.venv/` is already covered by `.gitignore`).
+
+```bash
+python3 -m venv .venv
+```
+
+### 3. Activate it
+
+You must activate the venv in **each new terminal session** before installing
+or running anything. Pick the line for your shell:
+
+```bash
+# macOS / Linux (bash, zsh)
+source .venv/bin/activate
+
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+
+# Windows (Command Prompt)
+.venv\Scripts\activate.bat
+```
+
+Once active, your prompt is prefixed with `(.venv)`. Confirm pip now points
+inside the venv (not the system Python):
+
+```bash
+which pip     # macOS / Linux  -> .../msds-comms-plotter/.venv/bin/pip
+where pip     # Windows        -> ...\msds-comms-plotter\.venv\Scripts\pip.exe
+```
+
+### 4. Install the package
+
+With the venv active, upgrade pip and install this project in editable mode
+(`-e`, so your source edits take effect without reinstalling). Because you're
+inside the venv, **no** `--break-system-packages` or `--user` flag is needed:
+
+```bash
+python -m pip install --upgrade pip
 python -m pip install -e .
 ```
+
+This pulls in every dependency automatically (see the table below).
+
+### 5. Verify
+
+```bash
+python -c "from msds_comms_plotter import chartkit; print('chartkit OK', len(chartkit.PALETTE), 'colors')"
+```
+
+Expected output: `chartkit OK 8 colors`.
+
+### 6. When you're done
+
+Leave the venv with:
+
+```bash
+deactivate
+```
+
+Next time you work on the project, just re-activate (step 3) — you don't need
+to recreate the venv or reinstall.
+
+> **Note — do not use `--break-system-packages`.** That flag (or a global
+> `pip install` outside a venv) writes into the system/Homebrew Python and can
+> corrupt it. The venv above is the safe, standard fix for the
+> `externally-managed-environment` error.
 
 ### Requirements
 
