@@ -252,9 +252,13 @@ def line_cumulative_goals(goals=None, save=False):
         tooltip=[alt.Tooltip("match_date:T", title="Date", format="%b %d"),
                  alt.Tooltip("goals:Q", title="Goals that day"),
                  alt.Tooltip("cumulative_goals:Q", title="Running total")])
-    chart = (line + hover).properties(
+    # Named zoom/pan selection (an explicit name keeps it distinct from the
+    # scatter's zoom when both share the gallery — an unnamed .interactive()
+    # hashes to the same param name and the two get merged).
+    zoom = alt.selection_interval(bind="scales", name="line_zoom")
+    chart = (line + hover).add_params(zoom).properties(
         width=560, height=320,
-        title="Goals accumulate across World Cup 2022 (172 total)").interactive()
+        title="Goals accumulate across World Cup 2022 (172 total)")
     return _save(chart, "alt_line_cumulative_goals") if save else chart
 
 
@@ -292,9 +296,12 @@ def scatter_xg_vs_goals(stats=None, min_shots=6, save=False):
                              opacity=0.75)
     labels = base.transform_filter(alt.datum.goals >= 4).mark_text(
         align="left", dx=7, dy=-2, color=chartkit.INK).encode(text="short_name:N")
-    chart = (diagonal + points + labels).properties(
+    # Named zoom/pan selection — see line_cumulative_goals for why the name
+    # matters when charts are combined in the gallery.
+    zoom = alt.selection_interval(bind="scales", name="scatter_zoom")
+    chart = (diagonal + points + labels).add_params(zoom).properties(
         width=460, height=420,
-        title=f"Finishing vs expected — players with ≥ {min_shots} shots").interactive()
+        title=f"Finishing vs expected — players with ≥ {min_shots} shots")
     return _save(chart, "alt_scatter_xg_vs_goals") if save else chart
 
 
@@ -379,7 +386,7 @@ def linked_scatter_position_counts(stats=None, save=False):
         "position_group:N", title="Position",
         scale=alt.Scale(domain=POSITION_ORDER, range=POSITION_RANGE),
         sort=POSITION_ORDER)
-    brush = alt.selection_interval()
+    brush = alt.selection_interval(name="position_brush")
 
     points = alt.Chart(df).mark_point(filled=True, size=70).encode(
         x=alt.X("xg:Q", scale=alt.Scale(zero=False),
@@ -513,75 +520,81 @@ def scatter_point_paths_hover(stats=None, save=False):
 
 
 # --------------------------------------------------------------------------- #
-# 8. Linked brush on synthetic data  —  a fuller cloud, same interaction
+# 8. Linked brush on passing data  —  a continuous cloud, same interaction
 # --------------------------------------------------------------------------- #
-# Synthetic "makes" for the demo cloud: label, x-centre, x-spread, count. Make C
-# is shifted to high power / low efficiency, the way the cars example's USA
-# points sit low-MPG / high-horsepower.
-_DEMO_MAKES = [("Make A", 90, 20, 130),
-               ("Make B", 115, 24, 120),
-               ("Make C", 185, 30, 150)]
-DEMO_ORDER = [m[0] for m in _DEMO_MAKES]
-DEMO_RANGE = chartkit.PALETTE[:3]
+def _players_passing(stats: pd.DataFrame | None, min_minutes: int = 90,
+                     min_passes: int = 20) -> pd.DataFrame:
+    """Per-player passing totals (volume + completion %) plus position group.
 
-
-def _random_cloud(seed: int = 42) -> pd.DataFrame:
-    """A synthetic power-vs-efficiency cloud: 3 makes, negative correlation.
-
-    Deterministic given ``seed``. Shaped to resemble the Altair cars example
-    (Horsepower vs MPG) — a fuller, continuous scatter than the discrete
-    World Cup goal counts.
+    A player's group is the most common position they played. Restricted to
+    players with real involvement (``>= min_minutes`` minutes and
+    ``>= min_passes`` passes) so passing rates are meaningful.
     """
-    import numpy as np
-    rng = np.random.default_rng(seed)
-    frames = []
-    for make, x_centre, x_spread, n in _DEMO_MAKES:
-        power = rng.normal(x_centre, x_spread, n).clip(40, 260)
-        efficiency = (55 - 0.16 * power + rng.normal(0, 4, n)).clip(8, 52)
-        frames.append(pd.DataFrame({"make": make,
-                                    "power": power.round(1),
-                                    "efficiency": efficiency.round(1)}))
-    return pd.concat(frames, ignore_index=True)
+    if stats is None:
+        stats = worldcup.build_all()
+    s = stats.copy()
+    s["_grp"] = s["position"].map(_position_group)
+    modal = (s.dropna(subset=["_grp"]).groupby(["player", "team"])["_grp"]
+             .agg(lambda x: x.mode().iloc[0]).rename("position_group")
+             .reset_index())
+    tot = (stats.groupby(["player", "team"], as_index=False)
+           .agg(passes=("passes", "sum"),
+                passes_completed=("passes_completed", "sum"),
+                minutes=("minutes_played", "sum")))
+    tot = tot.merge(modal, on=["player", "team"], how="left")
+    tot["completion_pct"] = (tot["passes_completed"] / tot["passes"]
+                             * 100).round(1)
+    return tot[(tot["minutes"] >= min_minutes)
+               & (tot["passes"] >= min_passes)
+               & tot["position_group"].notna()].copy()
 
 
-def linked_scatter_random_demo(seed: int = 42, save=False):
-    """The linked-brush pattern on a synthetic cloud that looks like the example.
+def linked_scatter_passing(stats=None, save=False):
+    """Brush passing volume vs accuracy; count-by-position bars recount selection.
 
-    Same interaction as :func:`linked_scatter_position_counts` — brush the
-    scatter, the count-by-category bars below recount the selection, unselected
-    points fade to grey — but on a larger, continuous **randomly generated**
-    dataset (three "makes", negative power/efficiency correlation) so the cloud
-    resembles Altair's cars scatter rather than the discrete goal counts.
+    The same linked-brush pattern as :func:`linked_scatter_position_counts`,
+    but on two **continuous** passing measures — passes attempted (volume) vs
+    pass completion % (accuracy) — so the World Cup data forms a full scatter
+    cloud rather than stacking on discrete goal counts. Points are colored by
+    position; **drag a box** and the bars below recount only the selected
+    players while the rest fade to grey. Defenders and midfielders cluster
+    high-volume / high-accuracy; forwards spread lower and looser.
     """
-    df = _random_cloud(seed)
+    df = _players_passing(stats)
 
     color = alt.Color(
-        "make:N", title="Make",
-        scale=alt.Scale(domain=DEMO_ORDER, range=DEMO_RANGE), sort=DEMO_ORDER)
-    brush = alt.selection_interval()
+        "position_group:N", title="Position",
+        scale=alt.Scale(domain=POSITION_ORDER, range=POSITION_RANGE),
+        sort=POSITION_ORDER)
+    brush = alt.selection_interval(name="passing_brush")
 
     points = alt.Chart(df).mark_point(filled=True, size=60).encode(
-        x=alt.X("power:Q", scale=alt.Scale(zero=False), title="Power"),
-        y=alt.Y("efficiency:Q", scale=alt.Scale(zero=False), title="Efficiency"),
+        x=alt.X("passes:Q", title="Passes attempted"),
+        y=alt.Y("completion_pct:Q", scale=alt.Scale(zero=False),
+                title="Pass completion (%)"),
         color=alt.when(brush).then(color).otherwise(alt.value("#cbcac4")),
-        tooltip=[alt.Tooltip("make:N", title="Make"),
-                 alt.Tooltip("power:Q", title="Power"),
-                 alt.Tooltip("efficiency:Q", title="Efficiency")],
+        tooltip=[alt.Tooltip("player:N", title="Player"),
+                 alt.Tooltip("team:N", title="Team"),
+                 alt.Tooltip("position_group:N", title="Position"),
+                 alt.Tooltip("passes:Q", title="Passes"),
+                 alt.Tooltip("completion_pct:Q", title="Completion %"),
+                 alt.Tooltip("minutes:Q", title="Minutes")],
     ).add_params(brush).properties(
-        width=460, height=360, title="Drag a box to select points →")
+        width=460, height=360, title="Drag a box to select players →")
 
     bars = alt.Chart(df).mark_bar().encode(
-        y=alt.Y("make:N", sort=DEMO_ORDER, title=None),
-        x=alt.X("count():Q", title="Points selected"),
+        y=alt.Y("position_group:N", sort=POSITION_ORDER, title=None),
+        x=alt.X("count():Q", title="Players selected",
+                axis=alt.Axis(tickMinStep=1)),
         color=color,
-        tooltip=[alt.Tooltip("make:N", title="Make"),
-                 alt.Tooltip("count():Q", title="Points")],
+        tooltip=[alt.Tooltip("position_group:N", title="Position"),
+                 alt.Tooltip("count():Q", title="Players")],
     ).transform_filter(brush).properties(
-        width=460, height=150, title="Selected points by make")
+        width=460, height=150, title="Selected players by position")
 
     chart = alt.vconcat(points, bars).properties(
-        title="Linked brush on synthetic data (≈400 random points)")
-    return _save(chart, "alt_brush_random_demo") if save else chart
+        title="Passing: volume vs accuracy — brush to recount by position")
+    return _save(chart, "alt_brush_passing") if save else chart
 
 
 ALL_CHARTS = [
@@ -592,7 +605,7 @@ ALL_CHARTS = [
     heatmap_team_phase,
     linked_scatter_position_counts,
     scatter_point_paths_hover,
-    linked_scatter_random_demo,
+    linked_scatter_passing,
 ]
 
 
@@ -607,7 +620,7 @@ def main():
     heatmap_team_phase(goals=goals, save=True)
     linked_scatter_position_counts(stats=stats, save=True)
     scatter_point_paths_hover(stats=stats, save=True)
-    linked_scatter_random_demo(save=True)
+    linked_scatter_passing(stats=stats, save=True)
 
 
 if __name__ == "__main__":

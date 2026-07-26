@@ -110,7 +110,7 @@ if `vl-convert-python` is installed, a static `.png` to `reports/figures/`:
 | Heatmap | `mark_rect` | `alt_heatmap_team_phase` | Goals by team (rows) × 15-minute phase (cols), sequential `viridis` shading. |
 | Linked brush | `mark_point` + `mark_bar` | `alt_brush_position_counts` | Scatter colored by position; drag a box and the count-by-position bars below recount only the selected players, while unselected points fade to grey (`selection_interval`). Mirrors Altair's README linked-histogram example. |
 | Point paths on hover | `mark_trail` + `mark_circle` | `alt_point_paths_hover` | Team-match scatter (xG vs goals, colored by stage). A match-number slider, hover to trace a team's whole path through the tournament, and a search box to spotlight a team by name. |
-| Linked brush (synthetic) | `mark_point` + `mark_bar` | `alt_brush_random_demo` | The same linked-brush interaction on a **synthetic** ~400-point cloud (three "makes", negative power/efficiency correlation) shaped to resemble Altair's cars scatter. Not World Cup data — a demo of the pattern on a fuller, continuous cloud. Seeded, so it's reproducible. |
+| Linked brush (passing) | `mark_point` + `mark_bar` | `alt_brush_passing` | Passing **volume vs accuracy** — passes attempted (x) vs completion % (y), colored by position. Two continuous measures, so it forms a full scatter cloud. Brush a box and the count-by-position bars below recount only the selected players. |
 
 **Interactivity:** every chart has hover tooltips. The line and scatter charts
 also zoom (scroll) and pan (drag). The linked-brush chart filters its bar view
@@ -125,24 +125,13 @@ best-effort-registers the usual font directories so JetBrains Mono is picked up;
 without the font installed, PNGs fall back to a generic monospace (nothing
 breaks). See `chartkit`'s font note in the top-level README.
 
-### Making the synthetic linked-brush chart
+### Making a linked-brush chart yourself
 
-`linked_scatter_random_demo(seed=42, save=False)` generates its own data, so it
-needs no World Cup tables. Call it with a different `seed` to get a different
-random cloud (same shape, different points):
-
-```python
-from msds_comms_plotter import altair_charts as ac
-
-ac.linked_scatter_random_demo()          # default cloud (seed=42), returns an alt.Chart
-ac.linked_scatter_random_demo(seed=7)    # a different random cloud
-ac.linked_scatter_random_demo(save=True) # also write alt_brush_random_demo.html/.png
-```
-
-The data comes from `ac._random_cloud(seed)` — a DataFrame with `make` (three
-categories), `power`, and `efficiency` (negatively correlated). Edit the
-`_DEMO_MAKES` table in `altair_charts.py` to change the category centres,
-spreads, or counts.
+Two of the charts use the linked-brush pattern: `linked_scatter_position_counts`
+(finishing — xG vs goals) and `linked_scatter_passing` (passing — volume vs
+accuracy). Both need a scatter of two continuous measures plus a low-cardinality
+category to color and count by; `_players_passing()` / `_shooters_by_position()`
+prepare those from the player-match table.
 
 **Building the pattern yourself** on any DataFrame with an x, a y, and a
 category column is just a few lines — an interval selection drives both the

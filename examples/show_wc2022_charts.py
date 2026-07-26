@@ -64,15 +64,15 @@ def build_gallery() -> alt.VConcatChart:
         ac.scatter_xg_vs_goals(stats=stats),
         ac.histogram_goal_minutes(goals=goals),
         ac.heatmap_team_phase(goals=goals),
-        ac.linked_scatter_position_counts(stats=stats),  # drag a box to recount
+        ac.linked_scatter_position_counts(stats=stats),  # brush: xG vs goals
         ac.scatter_point_paths_hover(stats=stats),       # hover paths + search box
-        ac.linked_scatter_random_demo(),                 # brush demo, synthetic data
+        ac.linked_scatter_passing(stats=stats),          # brush: passing volume vs accuracy
     ]
     # Independent color scales so the heatmap's sequential ramp doesn't leak
     # into the other charts.
     return (alt.vconcat(*charts)
             .resolve_scale(color="independent")
-            .properties(title="An Altair chart gallery — World Cup 2022 (+ a synthetic brush demo)"))
+            .properties(title="World Cup 2022 — an Altair chart gallery"))
 
 
 def main() -> None:
