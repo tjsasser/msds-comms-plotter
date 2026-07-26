@@ -264,6 +264,46 @@ chart.save("price.html")          # or chart.interactive() in a notebook
 
 Both figures now share the same font, palette, and chrome.
 
+### Running the World Cup example charts
+
+The package ships a worked example on real data: `altair_charts` explores the
+2022 World Cup with the five most common Altair chart types (bar, line,
+scatter, histogram, heatmap), and `plots` renders matplotlib figures of the
+same data.
+
+**Quickest — just look at the pre-rendered charts.** They're committed in
+`reports/figures/`. Open any `alt_*.html` in a browser for the interactive
+version, or the matching `.png` for a static image:
+
+```bash
+open reports/figures/alt_scatter_xg_vs_goals.html    # macOS
+xdg-open reports/figures/alt_scatter_xg_vs_goals.html # Linux
+```
+
+**Regenerate them yourself.** With the package installed (steps above), first
+unpack the cached raw data once, then run the module:
+
+```bash
+tar -xJf data/raw/wc2022_raw.tar.xz -C data/raw    # one-time; populates data/raw/statsbomb/
+python -m msds_comms_plotter.altair_charts          # writes alt_*.html + alt_*.png
+python -m msds_comms_plotter.plots                   # the matplotlib figures
+```
+
+Both write to `reports/figures/`. (`.html` always; `.png` needs the `[png]`
+extra above.)
+
+**In a notebook**, call any builder to display one chart inline — no need to
+run the whole module:
+
+```python
+from msds_comms_plotter import altair_charts as ac
+ac.scatter_xg_vs_goals()   # returns an alt.Chart; renders in Jupyter / VS Code
+ac.bar_goals_by_team()     # any of: bar / line / scatter / histogram / heatmap
+```
+
+See [`docs/wc2022_data.md`](docs/wc2022_data.md) for the full chart list and the
+dataset columns.
+
 ## Project layout
 
 ```
@@ -272,12 +312,13 @@ msds-comms-plotter/
 │   ├── __init__.py       # exposes load_data, summarize, chartkit
 │   ├── core.py           # pandas helpers
 │   ├── chartkit.py       # matplotlib + Altair theming  ← documented above
+│   ├── altair_charts.py  # World Cup 2022 Altair charts (run as a module)
 │   ├── plots.py          # World Cup 2022 matplotlib figures
 │   └── worldcup.py       # dataset loading/paths
 ├── data/                 # example datasets
 ├── docs/                 # dataset notes (see docs/wc2022_data.md)
 ├── notebooks/            # exploratory notebooks
-├── reports/figures/      # generated figures
+├── reports/figures/      # generated figures (alt_*.html/.png, plus matplotlib .png)
 └── pyproject.toml
 ```
 
