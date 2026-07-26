@@ -12,7 +12,7 @@ The package ships three things:
 | Module | What it does |
 | --- | --- |
 | `msds_comms_plotter.plots` | Ready-made matplotlib figures for the World Cup 2022 dataset. |
-| `msds_comms_plotter.altair_charts` | Altair explorations of the same data (bar, line, scatter, histogram, heatmap). |
+| `msds_comms_plotter.altair_charts` | Interactive Altair explorations of the same data (bar, line, scatter, histogram, heatmap, two linked-brush charts, and a point-paths chart), with a page-wide color-scheme picker in the gallery. |
 | `msds_comms_plotter.chartkit` | Shared theming for matplotlib **and** Altair. |
 
 ### About `chartkit`
@@ -267,19 +267,25 @@ Both figures now share the same font, palette, and chrome.
 
 The package ships a worked example on real data: `altair_charts` explores the
 2022 World Cup with the five most common Altair chart types (bar, line,
-scatter, histogram, heatmap), and `plots` renders matplotlib figures of the
+scatter, histogram, heatmap) plus three interactive ones (two linked-brush
+charts and a point-paths chart), and `plots` renders matplotlib figures of the
 same data.
 
-**Interactive — open all five in your browser (recommended).** The example
-script `examples/show_wc2022_charts.py` builds every chart, stacks them into one
-page, and opens it in your default web browser. Every chart has **hover
+**Interactive — open the whole gallery in your browser (recommended).** The
+example script `examples/show_wc2022_charts.py` builds every chart, stacks them
+into one page, and opens it in your default web browser. Every chart has **hover
 tooltips**; the **line and scatter charts also support zoom and pan**
 (scroll/drag) — the bar, histogram, and heatmap have categorical or binned axes
-where zoom isn't meaningful, so they're tooltip-only. The **linked brush** chart
-lets you drag a box on the xG-vs-goals scatter (colored by position) so the
-count-by-position bars below recount only the players you selected. The
+where zoom isn't meaningful, so they're tooltip-only. The **linked brush** charts
+let you drag a box on a scatter so the bars below recount only the players you
+selected; the **passing** chart adds a player-name **search box**; and the
 **point-paths** chart adds a match-number slider, hover-to-trace team paths, and
-a team **search box**.
+a team search box.
+
+Two **color pickers are pinned to the top** of the gallery: a **Category** scheme
+(15 categorical schemes) that recolors *every* chart at once — including the
+single-hue bar/line/scatter/histogram, each taking a distinct slot of the scheme
+— and a **Heatmap** ramp (15 sequential schemes) for the heatmap.
 
 ```bash
 python examples/show_wc2022_charts.py
@@ -338,7 +344,7 @@ ac.scatter_xg_vs_goals()            # returns an alt.Chart; renders in Jupyter /
 ac.bar_goals_by_team()              # bar / line / scatter / histogram / heatmap
 ac.linked_scatter_position_counts() # brush a box on the scatter → bars below recount
 ac.scatter_point_paths_hover()      # hover to trace a team's path; slider + search box
-ac.linked_scatter_passing()         # brush + player search + color-scheme dropdown (4 schemes)
+ac.linked_scatter_passing()         # brush + player search + color-scheme dropdown (15 schemes)
 ```
 
 See [`docs/wc2022_data.md`](docs/wc2022_data.md) for the full chart list and the
