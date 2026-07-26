@@ -58,6 +58,10 @@ def _load():
 def build_gallery() -> alt.VConcatChart:
     """Assemble all the charts into a single vertically stacked view."""
     goals, stats = _load()
+    # NOTE: scatter_point_paths_hover is placed LAST on purpose. Its bound input
+    # widgets (the "Match" slider and "Search" box) render in a single block at
+    # the very bottom of the page regardless of chart order, so the chart they
+    # control must be the last one for the controls to sit directly beneath it.
     charts = [
         ac.bar_goals_by_team(goals=goals),
         ac.line_cumulative_goals(goals=goals),
@@ -65,8 +69,8 @@ def build_gallery() -> alt.VConcatChart:
         ac.histogram_goal_minutes(goals=goals),
         ac.heatmap_team_phase(goals=goals),
         ac.linked_scatter_position_counts(stats=stats),  # brush: xG vs goals
-        ac.scatter_point_paths_hover(stats=stats),       # hover paths + search box
         ac.linked_scatter_passing(stats=stats),          # brush: passing volume vs accuracy
+        ac.scatter_point_paths_hover(stats=stats),       # LAST: owns the bottom slider + search box
     ]
     # Independent color scales so the heatmap's sequential ramp doesn't leak
     # into the other charts.
