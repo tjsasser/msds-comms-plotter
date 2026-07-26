@@ -13,6 +13,8 @@ dependencies = [
     "pandas",
     "pyarrow",
     "requests",
+    "matplotlib",
+    "altair",
 ]
 
 [tool.setuptools.packages.find]
