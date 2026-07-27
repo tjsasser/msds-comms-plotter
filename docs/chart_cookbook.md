@@ -52,12 +52,11 @@ player-name search box, color-scheme dropdown, and the linked count-by-position
 bars) is one function call:
 
 ```python
-import pandas as pd
-from msds_comms_plotter import altair_charts as ac, worldcup
+from msds_comms_plotter import altair_charts as ac
 
-stats = pd.read_parquet(worldcup.PROCESSED_DIR / "wc2022_player_match_stats.parquet")
-chart = ac.linked_scatter_passing(stats=stats)   # returns an alt.Chart
-chart.save("passing.html")                        # or just `chart` in a notebook
+chart = ac.linked_scatter_passing()   # uses the bundled data; returns an alt.Chart
+chart.save("passing.html")            # or just `chart` in a notebook
+# pass your own table with: ac.linked_scatter_passing(stats=my_df)
 ```
 
 Or run the example, which builds it and opens it in your browser:

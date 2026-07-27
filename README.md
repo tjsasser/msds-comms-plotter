@@ -38,12 +38,35 @@ matplotlib figure and an interactive Altair chart look like siblings:
 
 Requires **Python ≥ 3.9**.
 
-Install into a **virtual environment (venv)**. This is the recommended (and on
-many systems, required) approach: a modern Python — including the Homebrew
-Python on macOS — is "externally managed" and will refuse a plain
-`pip install` with an `error: externally-managed-environment` (PEP 668). A venv
-sidesteps that entirely by giving the project its own isolated Python and
-`pip`, so you never touch the system install.
+### Install from PyPI
+
+```bash
+pip install msds-comms-plotter        # add "[png]" for static PNG export
+```
+
+The World Cup data is bundled inside the package, so the chart works with no
+extra setup:
+
+```python
+from msds_comms_plotter import altair_charts as ac
+ac.linked_scatter_passing().save("passing.html")   # or just the chart in a notebook
+```
+
+To try it before it's released, install from **TestPyPI** (deps come from real
+PyPI):
+
+```bash
+pip install --index-url https://test.pypi.org/simple/ \
+            --extra-index-url https://pypi.org/simple/ msds-comms-plotter
+```
+
+### Install from source (for development)
+
+Work inside a **virtual environment (venv)** — recommended, and on many systems
+required: a modern Python (including Homebrew's on macOS) is "externally
+managed" and refuses a plain `pip install` with
+`error: externally-managed-environment` (PEP 668). A venv sidesteps that by
+giving the project its own isolated Python and `pip`.
 
 ### 1. Get the code
 
@@ -282,14 +305,14 @@ network needed) and writes a **self-contained** HTML file to
 stays interactive offline). On a headless machine it skips the browser and just
 prints the file path.
 
-**In a notebook**, call the builder to render it inline:
+**In a notebook**, call the builder to render it inline (uses the bundled data):
 
 ```python
-import pandas as pd
-from msds_comms_plotter import altair_charts as ac, worldcup
+from msds_comms_plotter import altair_charts as ac
+ac.linked_scatter_passing()   # returns an alt.Chart; renders in Jupyter
 
-stats = pd.read_parquet(worldcup.PROCESSED_DIR / "wc2022_player_match_stats.parquet")
-ac.linked_scatter_passing(stats=stats)   # returns an alt.Chart; renders in Jupyter
+# ...or pass your own player-match table:
+# ac.linked_scatter_passing(stats=my_df)
 ```
 
 See the [**chart cookbook**](docs/chart_cookbook.md) for the core Altair code

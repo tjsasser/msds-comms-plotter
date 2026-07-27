@@ -35,6 +35,21 @@ YELLOW = {"Yellow Card", "Second Yellow"}
 RED = {"Red Card", "Second Yellow"}
 
 
+def sample_player_match_stats() -> pd.DataFrame:
+    """Return the bundled per-player-per-match table (2022 World Cup).
+
+    Reads the parquet shipped inside the installed package, so it works with no
+    raw data, no network, and no build step — even from a ``pip install``. This
+    is the default data source for the charts.
+    """
+    from importlib.resources import files, as_file
+
+    resource = files("msds_comms_plotter").joinpath(
+        "data/wc2022_player_match_stats.parquet")
+    with as_file(resource) as path:
+        return pd.read_parquet(path)
+
+
 # --------------------------------------------------------------------------- #
 # Fetching (with a simple on-disk cache so we never re-download)
 # --------------------------------------------------------------------------- #

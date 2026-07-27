@@ -123,7 +123,7 @@ def _players_passing(stats: pd.DataFrame | None, min_minutes: int = 90,
     ``>= min_passes`` passes) so passing rates are meaningful.
     """
     if stats is None:
-        stats = worldcup.build_all()
+        stats = worldcup.sample_player_match_stats()
     s = stats.copy()
     s["_grp"] = s["position"].map(_position_group)
     modal = (s.dropna(subset=["_grp"]).groupby(["player", "team"])["_grp"]
@@ -216,8 +216,7 @@ ALL_CHARTS = [linked_scatter_passing]
 
 def main():
     """Build the passing chart and save it to reports/figures/."""
-    stats = worldcup.build_all()
-    linked_scatter_passing(stats=stats, save=True)
+    linked_scatter_passing(save=True)
 
 
 if __name__ == "__main__":

@@ -66,11 +66,9 @@ bar chart, a player-name search box, and a color-scheme dropdown. See the
 [chart cookbook](chart_cookbook.md) for the code, or just call it:
 
 ```python
-import pandas as pd
-from msds_comms_plotter import altair_charts as ac, worldcup
+from msds_comms_plotter import altair_charts as ac
 
-stats = pd.read_parquet(worldcup.PROCESSED_DIR / "wc2022_player_match_stats.parquet")
-chart = ac.linked_scatter_passing(stats=stats)
+chart = ac.linked_scatter_passing()   # uses the bundled data
 chart.save("passing.html")
 ```
 
