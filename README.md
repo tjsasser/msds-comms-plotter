@@ -11,8 +11,7 @@ The package ships three things:
 
 | Module | What it does |
 | --- | --- |
-| `msds_comms_plotter.plots` | Ready-made matplotlib figures for the World Cup 2022 dataset. |
-| `msds_comms_plotter.altair_charts` | Interactive Altair explorations of the same data (bar, line, scatter, histogram, heatmap, two linked-brush charts, a point-paths chart, and a horizon graph), with a page-wide color-scheme picker in the gallery. |
+| `msds_comms_plotter.altair_charts` | The **Passing: volume vs accuracy** Altair chart — a linked-brush scatter with a player-name search box and a color-scheme dropdown. |
 | `msds_comms_plotter.chartkit` | Shared theming for matplotlib **and** Altair. |
 
 ### About `chartkit`
@@ -133,7 +132,7 @@ Installing the package pulls these in automatically (declared in
 | `pandas` | core data helpers |
 | `pyarrow` | Parquet I/O |
 | `requests` | data fetching |
-| `matplotlib` | `chartkit` matplotlib theming + `plots` |
+| `matplotlib` | `chartkit` matplotlib theming |
 | `altair` | `chartkit` Altair theming (Altair 5.x; both the ≥5.5 and legacy theme APIs are supported) |
 
 `chartkit` imports matplotlib and Altair **lazily**, inside the functions that
@@ -263,93 +262,39 @@ chart.save("price.html")          # or chart.interactive() in a notebook
 
 Both figures now share the same font, palette, and chrome.
 
-### Running the World Cup example charts
+### Running the passing chart
 
-The package ships a worked example on real data: `altair_charts` explores the
-2022 World Cup with the five most common Altair chart types (bar, line,
-scatter, histogram, heatmap) plus two linked-brush charts, a point-paths chart,
-and a horizon graph of shots-per-minute, and `plots` renders matplotlib figures
-of the same data.
+The package ships one worked example on real data: **Passing: volume vs
+accuracy** — a linked-brush scatter of passes attempted vs pass completion %,
+colored by position, with a count-by-position bar chart, a player-name search
+box, and a color-scheme dropdown.
 
-**Interactive — open the whole gallery in your browser (recommended).** The
-example script `examples/show_wc2022_charts.py` builds every chart, stacks them
-into one page, and opens it in your default web browser. Every chart has **hover
-tooltips**; the **line and scatter charts also support zoom and pan**
-(scroll/drag) — the bar, histogram, and heatmap have categorical or binned axes
-where zoom isn't meaningful, so they're tooltip-only. The **linked brush** charts
-let you drag a box on a scatter so the bars below recount only the players you
-selected; the **passing** chart adds a player-name **search box**; and the
-**point-paths** chart adds a match-number slider, hover-to-trace team paths, and
-a team search box.
-
-Two **color pickers are pinned to the top** of the gallery: a **Category** scheme
-(15 categorical schemes) that recolors *every* chart at once — including the
-single-hue bar/line/scatter/histogram, each taking a distinct slot of the scheme
-— and a **Heatmap** ramp (15 sequential schemes) for the heatmap.
+**Open it in your browser (recommended).** The example script builds the chart
+and opens it:
 
 ```bash
 python examples/show_wc2022_charts.py
 ```
 
-It writes a **self-contained** HTML gallery to
-`reports/figures/wc2022_altair_gallery.html` (the Vega libraries are embedded,
-so it stays interactive offline — no server, no internet). Re-open that file any
-time without re-running. On a headless machine the script skips the browser and
-just prints the file path.
+It reads the committed `wc2022_player_match_stats.parquet` (no raw data or
+network needed) and writes a **self-contained** HTML file to
+`reports/figures/passing_chart.html` (the Vega libraries are embedded, so it
+stays interactive offline). On a headless machine it skips the browser and just
+prints the file path.
 
-> **Note — running the examples modifies tracked files.** The figures under
-> `reports/figures/` are committed to the repo, so regenerating them (running
-> this script, `python -m msds_comms_plotter.altair_charts`, or `…plots`)
-> leaves local changes in your working tree — `git status` will show the
-> `reports/figures/` files as modified. That's expected; the output just isn't
-> byte-identical every run. Before you `git pull`, discard those regenerated
-> files so the pull isn't blocked:
->
-> ```bash
-> git checkout -- reports/figures/   # discard regenerated figures, then pull
-> git pull
-> ```
->
-> (Only do this when the sole changes are regenerated figures — check with
-> `git status` first. If you want to avoid this entirely, git-ignore
-> `reports/figures/` so the outputs stay untracked.)
-
-**Quickest — just look at the pre-rendered charts.** Individual charts are
-committed in `reports/figures/`. Open any `alt_*.html` in a browser for the
-interactive version, or the matching `.png` for a static image:
-
-```bash
-open reports/figures/alt_scatter_xg_vs_goals.html    # macOS
-xdg-open reports/figures/alt_scatter_xg_vs_goals.html # Linux
-```
-
-**Regenerate them yourself.** With the package installed (steps above), first
-unpack the cached raw data once, then run the module:
-
-```bash
-tar -xJf data/raw/wc2022_raw.tar.xz -C data/raw    # one-time; populates data/raw/statsbomb/
-python -m msds_comms_plotter.altair_charts          # writes alt_*.html + alt_*.png
-python -m msds_comms_plotter.plots                   # the matplotlib figures
-```
-
-Both write to `reports/figures/`. (`.html` always; `.png` needs the `[png]`
-extra above.)
-
-**In a notebook**, call any builder to display one chart inline — no need to
-run the whole module:
+**In a notebook**, call the builder to render it inline:
 
 ```python
-from msds_comms_plotter import altair_charts as ac
-ac.scatter_xg_vs_goals()            # returns an alt.Chart; renders in Jupyter / VS Code
-ac.bar_goals_by_team()              # bar / line / scatter / histogram / heatmap
-ac.linked_scatter_position_counts() # brush a box on the scatter → bars below recount
-ac.scatter_point_paths_hover()      # hover to trace a team's path; slider + search box
-ac.linked_scatter_passing()         # brush + player search + color-scheme dropdown (15 schemes)
+import pandas as pd
+from msds_comms_plotter import altair_charts as ac, worldcup
+
+stats = pd.read_parquet(worldcup.PROCESSED_DIR / "wc2022_player_match_stats.parquet")
+ac.linked_scatter_passing(stats=stats)   # returns an alt.Chart; renders in Jupyter
 ```
 
-See the [**chart cookbook**](docs/chart_cookbook.md) for a picture and the core
-Altair code for each chart type, and [`docs/wc2022_data.md`](docs/wc2022_data.md)
-for the full chart list and the dataset columns.
+See the [**chart cookbook**](docs/chart_cookbook.md) for the core Altair code
+behind the chart, and [`docs/wc2022_data.md`](docs/wc2022_data.md) for the
+dataset columns.
 
 ## Project layout
 
@@ -358,8 +303,7 @@ msds-comms-plotter/
 ├── src/msds_comms_plotter/
 │   ├── __init__.py       # exposes chartkit
 │   ├── chartkit.py       # matplotlib + Altair theming  ← documented above
-│   ├── altair_charts.py  # World Cup 2022 Altair charts (run as a module)
-│   ├── plots.py          # World Cup 2022 matplotlib figures
+│   ├── altair_charts.py  # the Passing: volume vs accuracy chart (run as a module)
 │   └── worldcup.py       # dataset loading/paths
 ├── examples/             # runnable examples (show_wc2022_charts.py opens a browser)
 ├── data/                 # example datasets
