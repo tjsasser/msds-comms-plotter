@@ -63,7 +63,7 @@ red cards), `starter`, `position`.
 accuracy** — themed with `chartkit`. It's a linked-brush scatter (passes
 attempted vs pass completion %, colored by position) with a count-by-position
 bar chart, a player-name search box, and a color-scheme dropdown. See the
-[chart cookbook](chart_cookbook.md) for the code, or just call it:
+README's "Chart cookbook" section for the code, or just call it:
 
 ```python
 from msds_comms_plotter import altair_charts as ac

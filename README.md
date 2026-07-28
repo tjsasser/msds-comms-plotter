@@ -299,11 +299,10 @@ and opens it:
 python examples/show_wc2022_charts.py
 ```
 
-It reads the committed `wc2022_player_match_stats.parquet` (no raw data or
-network needed) and writes a **self-contained** HTML file to
-`reports/figures/passing_chart.html` (the Vega libraries are embedded, so it
-stays interactive offline). On a headless machine it skips the browser and just
-prints the file path.
+It uses the data bundled inside the package (no raw data or network needed) and
+writes a **self-contained** `passing_chart.html` to the folder you run it from
+(the Vega libraries are embedded, so it stays interactive offline). On a
+headless machine it skips the browser and just prints the file path.
 
 **In a notebook**, call the builder to render it inline (uses the bundled data):
 
@@ -315,9 +314,66 @@ ac.linked_scatter_passing()   # returns an alt.Chart; renders in Jupyter
 # ac.linked_scatter_passing(stats=my_df)
 ```
 
-See the [**chart cookbook**](docs/chart_cookbook.md) for the core Altair code
-behind the chart, and [`docs/wc2022_data.md`](docs/wc2022_data.md) for the
-dataset columns.
+See [`docs/wc2022_data.md`](docs/wc2022_data.md) for the dataset columns.
+
+## Chart cookbook
+
+The one chart this package ships is **Passing: volume vs accuracy**. Here's the
+core Altair code behind it, then the one-call shortcut. First, every chart picks
+up the shared look:
+
+```python
+import altair as alt
+from msds_comms_plotter import chartkit
+chartkit.enable_altair_theme()   # JetBrains Mono, shared palette, minimal chrome
+```
+
+### Linked brush (`selection_interval`)
+
+Altair's signature interaction. Drag a box on the scatter (passes attempted vs
+pass completion %, colored by position) and the count-by-position bars below
+recount only the selected players; the rest fade to grey. One selection drives
+both marks. The full builder adds a player-name search box and a color-scheme
+dropdown on top.
+
+![Passing: volume vs accuracy](https://raw.githubusercontent.com/tjsasser/msds-comms-plotter/plotter-abbreviated/reports/figures/alt_brush_passing.png)
+
+```python
+brush = alt.selection_interval()
+color = alt.Color("position:N")
+
+points = alt.Chart(players).mark_point(filled=True).encode(
+    x="passes:Q", y="completion_pct:Q",
+    # selected points keep their category color; the rest go grey
+    color=alt.when(brush).then(color).otherwise(alt.value("lightgray")),
+).add_params(brush)
+
+bars = alt.Chart(players).mark_bar().encode(
+    y="position:N", x="count():Q", color=color,
+).transform_filter(brush)          # only the brushed points are counted
+
+points & bars                      # vertical concatenation
+```
+
+### Shortcut: just call the library
+
+You don't have to reproduce the code above — the full chart (brush, search box,
+color-scheme dropdown, linked bars) is one call, using the bundled data:
+
+```python
+from msds_comms_plotter import altair_charts as ac
+
+chart = ac.linked_scatter_passing()   # returns an alt.Chart
+chart.save("passing.html")            # or `chart` in a notebook
+# pass your own table with: ac.linked_scatter_passing(stats=my_df)
+```
+
+Any chart is an `alt.Chart` — save it as interactive HTML or a static PNG:
+
+```python
+chart.save("chart.html")            # interactive; add inline=True for offline
+chart.save("chart.png", ppi=200)    # needs vl-convert-python (the [png] extra)
+```
 
 ## Project layout
 
@@ -328,11 +384,10 @@ msds-comms-plotter/
 │   ├── chartkit.py       # matplotlib + Altair theming  ← documented above
 │   ├── altair_charts.py  # the Passing: volume vs accuracy chart (run as a module)
 │   └── worldcup.py       # dataset loading/paths
-├── examples/             # runnable examples (show_wc2022_charts.py opens a browser)
+├── examples/             # runnable example scripts (write to the current folder)
 ├── data/                 # example datasets
 ├── docs/                 # dataset notes (see docs/wc2022_data.md)
-├── notebooks/            # exploratory notebooks
-├── reports/figures/      # generated figures (alt_*.html/.png, plus matplotlib .png)
+├── reports/figures/      # the passing chart, rendered (html + png)
 └── pyproject.toml
 ```
 
