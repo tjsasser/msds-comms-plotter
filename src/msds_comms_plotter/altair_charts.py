@@ -144,19 +144,19 @@ def _short_name(full: str) -> str:
 # Data helpers
 # --------------------------------------------------------------------------- #
 def _goals(goals: pd.DataFrame | None) -> pd.DataFrame:
-    """Return the one-row-per-goal table, building it from cache if needed."""
-    return worldcup.build_goal_events() if goals is None else goals
+    """Return the one-row-per-goal table (bundled sample data by default)."""
+    return worldcup.sample_goals() if goals is None else goals
 
 
 def _shots(shots: pd.DataFrame | None) -> pd.DataFrame:
-    """Return the one-row-per-shot table, building it from cache if needed."""
-    return worldcup.build_shot_events() if shots is None else shots
+    """Return the one-row-per-shot table (bundled sample data by default)."""
+    return worldcup.sample_shots() if shots is None else shots
 
 
 def _player_totals(stats: pd.DataFrame | None) -> pd.DataFrame:
     """Per-player tournament totals (goals, xG, shots, minutes)."""
     if stats is None:
-        stats = worldcup.build_all()
+        stats = worldcup.sample_player_match_stats()
     tot = (stats.groupby(["player", "team"], as_index=False)
            .agg(goals=("goals", "sum"), xg=("xg", "sum"),
                 shots=("shots", "sum"), minutes=("minutes_played", "sum")))
@@ -171,7 +171,7 @@ def _team_match(stats: pd.DataFrame | None) -> pd.DataFrame:
     through the tournament (1 = opening game, up to 7 for the finalists).
     """
     if stats is None:
-        stats = worldcup.build_all()
+        stats = worldcup.sample_player_match_stats()
     tm = (stats.groupby(["team", "match_id", "match_date", "stage"],
                         as_index=False)
           .agg(goals=("goals", "sum"), xg=("xg", "sum")))
@@ -208,7 +208,7 @@ def _shooters_by_position(stats: pd.DataFrame | None) -> pd.DataFrame:
     shows finishers and the position bars have something to count.
     """
     if stats is None:
-        stats = worldcup.build_all()
+        stats = worldcup.sample_player_match_stats()
     s = stats.copy()
     s["_grp"] = s["position"].map(_position_group)
     modal = (s.dropna(subset=["_grp"]).groupby(["player", "team"])["_grp"]
@@ -660,7 +660,7 @@ def _players_passing(stats: pd.DataFrame | None, min_minutes: int = 90,
     ``>= min_passes`` passes) so passing rates are meaningful.
     """
     if stats is None:
-        stats = worldcup.build_all()
+        stats = worldcup.sample_player_match_stats()
     s = stats.copy()
     s["_grp"] = s["position"].map(_position_group)
     modal = (s.dropna(subset=["_grp"]).groupby(["player", "team"])["_grp"]
@@ -819,9 +819,9 @@ ALL_CHARTS = [
 
 def main():
     """Build every chart once, reusing shared data, and save to reports/figures/."""
-    goals = worldcup.build_goal_events()
-    stats = worldcup.build_all()
-    shots = worldcup.build_shot_events()
+    goals = worldcup.sample_goals()
+    stats = worldcup.sample_player_match_stats()
+    shots = worldcup.sample_shots()
     bar_goals_by_team(goals=goals, save=True)
     line_cumulative_goals(goals=goals, save=True)
     scatter_xg_vs_goals(stats=stats, save=True)

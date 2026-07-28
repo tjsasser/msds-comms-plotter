@@ -92,8 +92,8 @@ python -m msds_comms_plotter.plots
 same data, all themed with `chartkit` so they match the matplotlib figures. It
 walks through the five most common Altair chart types — one per mark — plus two
 linked-brush charts, a point-paths chart, and a horizon graph. For a picture and
-the core Altair code behind each type, see the
-[chart cookbook](chart_cookbook.md).
+the core Altair code behind each type, see the **chart cookbook** in the
+[top-level README](../README.md#chart-cookbook).
 
 ```bash
 python -m msds_comms_plotter.altair_charts

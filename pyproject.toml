@@ -5,10 +5,22 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "msds-comms-plotter"
 version = "0.1.0"
-description = "Example plotting library created by Claude"
+description = "Interactive Altair charts and a matplotlib/Altair styling toolkit for the 2022 FIFA World Cup (MSDS 610 example)."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
+authors = [{ name = "Tom Sasser", email = "tjsasser@dons.usfca.edu" }]
+keywords = ["altair", "visualization", "matplotlib", "football", "world-cup", "statsbomb"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Education",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
 dependencies = [
     "pandas",
     "pyarrow",
@@ -22,5 +34,14 @@ dependencies = [
 # install with `pip install -e ".[png]"` to also write .png files.
 png = ["vl-convert-python"]
 
+[project.urls]
+Homepage = "https://github.com/tjsasser/msds-comms-plotter"
+Repository = "https://github.com/tjsasser/msds-comms-plotter"
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+# Ship the bundled World Cup sample tables inside the wheel so the charts work
+# with no raw data or network after a plain `pip install`.
+msds_comms_plotter = ["data/*.parquet"]

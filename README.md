@@ -39,7 +39,17 @@ matplotlib figure and an interactive Altair chart look like siblings:
 
 Requires **Python ≥ 3.9**.
 
-Install into a **virtual environment (venv)**. This is the recommended (and on
+**Just want to use it?** Inside an activated virtual environment (see below),
+the package installs straight from PyPI — the World Cup sample data is bundled,
+so the charts work with no extra downloads:
+
+```bash
+python -m pip install msds-comms-plotter          # add "[png]" for static PNG export
+python -c "from msds_comms_plotter import altair_charts as ac; ac.linked_scatter_passing().save('passing.html')"
+```
+
+The rest of this section covers a full **editable/dev** install from a clone.
+Either way, install into a **virtual environment (venv)**. This is the recommended (and on
 many systems, required) approach: a modern Python — including the Homebrew
 Python on macOS — is "externally managed" and will refuse a plain
 `pip install` with an `error: externally-managed-environment` (PEP 668). A venv
@@ -291,28 +301,20 @@ single-hue bar/line/scatter/histogram, each taking a distinct slot of the scheme
 python examples/show_wc2022_charts.py
 ```
 
-It writes a **self-contained** HTML gallery to
-`reports/figures/wc2022_altair_gallery.html` (the Vega libraries are embedded,
-so it stays interactive offline — no server, no internet). Re-open that file any
-time without re-running. On a headless machine the script skips the browser and
-just prints the file path.
+The example uses the World Cup data **bundled inside the installed package**, so
+it works from any folder with no raw data and no network. It writes a
+**self-contained** HTML gallery to `./wc2022_altair_gallery.html` in whatever
+directory you run it from (the Vega libraries are embedded, so it stays
+interactive offline — no server, no internet). Re-open that file any time
+without re-running. On a headless machine the script skips the browser and just
+prints the file path.
 
-> **Note — running the examples modifies tracked files.** The figures under
-> `reports/figures/` are committed to the repo, so regenerating them (running
-> this script, `python -m msds_comms_plotter.altair_charts`, or `…plots`)
-> leaves local changes in your working tree — `git status` will show the
-> `reports/figures/` files as modified. That's expected; the output just isn't
-> byte-identical every run. Before you `git pull`, discard those regenerated
-> files so the pull isn't blocked:
->
-> ```bash
-> git checkout -- reports/figures/   # discard regenerated figures, then pull
-> git pull
-> ```
->
-> (Only do this when the sole changes are regenerated figures — check with
-> `git status` first. If you want to avoid this entirely, git-ignore
-> `reports/figures/` so the outputs stay untracked.)
+Two more drop-in example scripts ship alongside it:
+
+```bash
+python examples/save_png.py           # -> ./passing_chart.png  (needs the [png] extra)
+python examples/use_your_own_data.py  # feed the chart your own DataFrame
+```
 
 **Quickest — just look at the pre-rendered charts.** Individual charts are
 committed in `reports/figures/`. Open any `alt_*.html` in a browser for the
@@ -323,13 +325,12 @@ open reports/figures/alt_scatter_xg_vs_goals.html    # macOS
 xdg-open reports/figures/alt_scatter_xg_vs_goals.html # Linux
 ```
 
-**Regenerate them yourself.** With the package installed (steps above), first
-unpack the cached raw data once, then run the module:
+**Regenerate them yourself.** With the package installed (steps above), run the
+module — it uses the bundled World Cup data, so no raw-data unpack is needed:
 
 ```bash
-tar -xJf data/raw/wc2022_raw.tar.xz -C data/raw    # one-time; populates data/raw/statsbomb/
-python -m msds_comms_plotter.altair_charts          # writes alt_*.html + alt_*.png
-python -m msds_comms_plotter.plots                   # the matplotlib figures
+python -m msds_comms_plotter.altair_charts   # writes alt_*.html + alt_*.png
+python -m msds_comms_plotter.plots            # the matplotlib figures
 ```
 
 Both write to `reports/figures/`. (`.html` always; `.png` needs the `[png]`
@@ -347,9 +348,226 @@ ac.scatter_point_paths_hover()      # hover to trace a team's path; slider + sea
 ac.linked_scatter_passing()         # brush + player search + color-scheme dropdown (15 schemes)
 ```
 
-See the [**chart cookbook**](docs/chart_cookbook.md) for a picture and the core
+See the [**chart cookbook**](#chart-cookbook) below for a picture and the core
 Altair code for each chart type, and [`docs/wc2022_data.md`](docs/wc2022_data.md)
 for the full chart list and the dataset columns.
+
+## Chart cookbook
+
+One recipe per chart type used in this project: what it looks like, and the
+core Altair code to build it. The snippets are trimmed to the essential
+`mark` + `encode` so the technique is clear — the full themed, interactive
+versions live in
+[`msds_comms_plotter.altair_charts`](src/msds_comms_plotter/altair_charts.py)
+(call `ac.bar_goals_by_team()`, `ac.line_cumulative_goals()`, …). Every chart
+first picks up the shared look with:
+
+```python
+import altair as alt
+from msds_comms_plotter import chartkit
+chartkit.enable_altair_theme()   # JetBrains Mono, shared palette, minimal chrome
+```
+
+Data comes from the bundled sample tables (`worldcup.sample_goals()`,
+`worldcup.sample_player_match_stats()`, `worldcup.sample_shots()`); see
+[`docs/wc2022_data.md`](docs/wc2022_data.md) for columns.
+
+### 1. Bar chart — `mark_bar`
+
+Magnitude across a category. One measure, one categorical axis, single hue;
+rank is carried by length and the sort order.
+
+![Bar chart of goals per team](https://raw.githubusercontent.com/tjsasser/msds-comms-plotter/main/reports/figures/alt_bar_goals_by_team.png)
+
+```python
+# by_team: columns "team", "goals"
+alt.Chart(by_team).mark_bar().encode(
+    x=alt.X("goals:Q", title="Goals scored"),
+    y=alt.Y("team:N", sort="-x", title=None),   # sort teams by the x value
+)
+```
+
+### 2. Line chart — `mark_line`
+
+Change over time. Here goals are summed per match-day and accumulated into a
+monotone curve. `point=True` marks each observation.
+
+![Line chart of cumulative goals](https://raw.githubusercontent.com/tjsasser/msds-comms-plotter/main/reports/figures/alt_line_cumulative_goals.png)
+
+```python
+# daily: columns "match_date" (datetime), "cumulative_goals"
+alt.Chart(daily).mark_line(point=True).encode(
+    x=alt.X("match_date:T", title="Match date"),
+    y=alt.Y("cumulative_goals:Q", title="Cumulative goals"),
+)
+```
+
+### 3. Scatter plot — `mark_point`
+
+Relationship between two continuous measures — one dot per record.
+
+![Scatter of xG vs goals](https://raw.githubusercontent.com/tjsasser/msds-comms-plotter/main/reports/figures/alt_scatter_xg_vs_goals.png)
+
+```python
+# players: columns "xg", "goals"
+alt.Chart(players).mark_point(filled=True, size=70).encode(
+    x=alt.X("xg:Q", title="Expected goals (xG)"),
+    y=alt.Y("goals:Q", title="Goals scored"),
+)
+```
+
+Add a `y = x` reference line by layering a second chart:
+
+```python
+diag = alt.Chart(alt.Data(values=[{"v": 0}, {"v": 9}])).mark_line(
+    strokeDash=[4, 4]).encode(x="v:Q", y="v:Q")
+chart = diag + points
+```
+
+### 4. Histogram — `mark_bar` with `bin`
+
+Distribution of a *continuous* variable: bin it, then count. A histogram is a
+bar chart whose x is binned.
+
+![Histogram of goal minutes](https://raw.githubusercontent.com/tjsasser/msds-comms-plotter/main/reports/figures/alt_hist_goal_minutes.png)
+
+```python
+# goals: one row per goal, column "minute"
+alt.Chart(goals).mark_bar().encode(
+    x=alt.X("minute:Q", bin=alt.Bin(step=5), title="Match minute"),
+    y=alt.Y("count():Q", title="Goals scored"),   # count() aggregates per bin
+)
+```
+
+### 5. Heatmap — `mark_rect`
+
+Two categorical axes with a magnitude in each cell, shaded by a **sequential**
+color ramp.
+
+![Heatmap of goals by team and phase](https://raw.githubusercontent.com/tjsasser/msds-comms-plotter/main/reports/figures/alt_heatmap_team_phase.png)
+
+```python
+# counts: columns "team", "phase", "goals"
+alt.Chart(counts).mark_rect(stroke="white", strokeWidth=2).encode(
+    x=alt.X("phase:N", title="Match phase"),
+    y=alt.Y("team:N", title=None),
+    color=alt.Color("goals:Q", scale=alt.Scale(scheme="viridis")),
+)
+```
+
+### 6. Linked brush — `selection_interval` (crossfilter)
+
+Altair's signature interaction: **drag a box** on the scatter and a second
+view re-aggregates to only the selected points; the rest fade to grey. One
+selection drives both marks.
+
+![Brushable scatter linked to count bars](https://raw.githubusercontent.com/tjsasser/msds-comms-plotter/main/reports/figures/alt_brush_position_counts.png)
+
+```python
+brush = alt.selection_interval()
+color = alt.Color("position:N")
+
+points = alt.Chart(players).mark_point(filled=True).encode(
+    x="xg:Q", y="goals:Q",
+    # selected points keep their category color; the rest go grey
+    color=alt.when(brush).then(color).otherwise(alt.value("lightgray")),
+).add_params(brush)
+
+bars = alt.Chart(players).mark_bar().encode(
+    y="position:N", x="count():Q", color=color,
+).transform_filter(brush)          # only the brushed points are counted
+
+points & bars                      # vertical concatenation
+```
+
+The **passing** chart (`ac.linked_scatter_passing`) is the same pattern with a
+player-name search box and a live color-scheme dropdown added on top — see the
+one-call shortcut at the end of this cookbook.
+
+### 7. Point paths on hover — `mark_trail` + hover selection
+
+Each entity is a trajectory over an ordered dimension. Hovering one traces its
+whole path as a tapering trail; the rest stay dim. (Abbreviated — the full
+builder adds a match-number slider and a team search box.)
+
+![Team paths through the tournament](https://raw.githubusercontent.com/tjsasser/msds-comms-plotter/main/reports/figures/alt_point_paths_hover.png)
+
+```python
+hover = alt.selection_point(on="mouseover", fields=["team"], empty=False)
+
+# team_matches: columns "xg", "goals", "team", "match_num"
+base = alt.Chart(team_matches).encode(x="xg:Q", y="goals:Q", detail="team:N")
+
+points = base.mark_circle(size=110).add_params(hover)
+trail = base.mark_trail().encode(
+    order=alt.Order("match_num:Q"),                 # connect in match order
+    size=alt.Size("match_num:Q", legend=None),      # taper over time
+    opacity=alt.when(hover).then(alt.value(0.4)).otherwise(alt.value(0)),
+)
+trail + points
+```
+
+### 8. Horizon graph — layered clipped `mark_area`
+
+Compresses a tall time series into a short band: fold it into N layers, each a
+clipped area of the amount spilling past its threshold, so busier values stack
+into darker color.
+
+![Horizon graph of shots per minute](https://raw.githubusercontent.com/tjsasser/msds-comms-plotter/main/reports/figures/alt_horizon_shots.png)
+
+```python
+import math
+# per_min: columns "minute", "shots"
+bands = 4
+band = math.ceil(per_min["shots"].max() / bands)
+
+layers = [
+    alt.Chart(per_min)
+       .transform_calculate(v=f"clamp(datum.shots - {k * band}, 0, {band})")
+       .mark_area(clip=True, interpolate="monotone", opacity=0.5)
+       .encode(x=alt.X("minute:Q", title="Match minute"),
+               y=alt.Y("v:Q", scale=alt.Scale(domain=[0, band]), axis=None))
+    for k in range(bands)
+]
+alt.layer(*layers)
+```
+
+### Saving a chart
+
+Any chart is an `alt.Chart`; save it as interactive HTML or a static PNG:
+
+```python
+chart.save("chart.html")            # interactive; add inline=True for offline
+chart.save("chart.png", ppi=200)    # needs vl-convert-python (the [png] extra)
+```
+
+To see them all together with the shared color pickers, run the gallery:
+
+```bash
+python examples/show_wc2022_charts.py
+```
+
+### Shortcut: just call the library
+
+You don't have to reproduce any of the code above. Each chart already has a
+one-call builder in `altair_charts`, and every builder defaults to the bundled
+World Cup data — so a plain call works right after `pip install`. For example,
+the full **passing** chart — brush, player-name search box, color-scheme
+dropdown, and the linked count-by-position bars — is one function call:
+
+![Passing: volume vs accuracy](https://raw.githubusercontent.com/tjsasser/msds-comms-plotter/main/reports/figures/alt_brush_passing.png)
+
+```python
+from msds_comms_plotter import altair_charts as ac
+
+chart = ac.linked_scatter_passing()   # bundled data; returns an alt.Chart
+chart.save("passing.html")             # or just `chart` in a notebook
+```
+
+The same one-call pattern works for every chart — `ac.bar_goals_by_team()`,
+`ac.horizon_shots_per_minute()`, and so on. To use your own numbers, pass a
+DataFrame (`ac.linked_scatter_passing(stats=my_df)`) and you get the full
+themed, interactive chart back as an `alt.Chart`.
 
 ## Project layout
 

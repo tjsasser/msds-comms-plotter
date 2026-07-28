@@ -36,6 +36,33 @@ RED = {"Red Card", "Second Yellow"}
 
 
 # --------------------------------------------------------------------------- #
+# Bundled sample data (shipped inside the installed package)
+# --------------------------------------------------------------------------- #
+def _read_bundled(filename: str) -> pd.DataFrame:
+    """Read a parquet shipped inside the installed package via importlib."""
+    from importlib.resources import files, as_file
+
+    resource = files("msds_comms_plotter").joinpath(f"data/{filename}")
+    with as_file(resource) as path:
+        return pd.read_parquet(path)
+
+
+def sample_player_match_stats() -> pd.DataFrame:
+    """Bundled per-player-per-match table — works offline, no raw data needed."""
+    return _read_bundled("wc2022_player_match_stats.parquet")
+
+
+def sample_goals() -> pd.DataFrame:
+    """Bundled one-row-per-goal table — works offline, no raw data needed."""
+    return _read_bundled("wc2022_goals.parquet")
+
+
+def sample_shots() -> pd.DataFrame:
+    """Bundled one-row-per-shot table — works offline, no raw data needed."""
+    return _read_bundled("wc2022_shots.parquet")
+
+
+# --------------------------------------------------------------------------- #
 # Fetching (with a simple on-disk cache so we never re-download)
 # --------------------------------------------------------------------------- #
 def _get_json(url: str, cache_path: Path, session: requests.Session):

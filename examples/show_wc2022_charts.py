@@ -1,19 +1,17 @@
 #!/usr/bin/env python3
 """Build the World Cup 2022 Altair chart gallery and open it in a browser.
 
-Run this for an interactive gallery. Every chart has hover tooltips; the line
-and scatter charts also zoom and pan (scroll to zoom, drag to pan):
+Works from anywhere against the installed package — it uses the World Cup data
+bundled inside ``msds_comms_plotter`` (no raw data, no network) and writes the
+output to the folder you run it from. Every chart has hover tooltips; the line
+and scatter charts also zoom and pan (scroll to zoom, drag to pan)::
 
-    python examples/show_wc2022_charts.py
+    python show_wc2022_charts.py   ->  ./wc2022_altair_gallery.html
 
 What it does:
 
-1. Loads the processed data (``data/processed/*.parquet``); if that's missing,
-   it builds the tables from the cached StatsBomb JSON. That cache lives in the
-   compressed archive, so unpack it once first::
-
-       tar -xJf data/raw/wc2022_raw.tar.xz -C data/raw
-
+1. Loads the bundled tables (goals, player-match stats, shots) via
+   :mod:`msds_comms_plotter.worldcup`.
 2. Builds every chart (bar, line, scatter, histogram, heatmap, two linked-brush
    charts, and the point-paths chart) via :mod:`msds_comms_plotter.altair_charts`,
    themed with ``chartkit``.
@@ -23,44 +21,28 @@ What it does:
    (``inline=True`` embeds the Vega libraries, so it stays interactive with no
    internet connection and no local server).
 4. Opens that file in your default web browser.
-
-The output is written to ``reports/figures/wc2022_altair_gallery.html`` — open
-it again any time without re-running.
 """
 
 from __future__ import annotations
 
 import re
 import webbrowser
+from pathlib import Path
 
 import altair as alt
-import pandas as pd
 
 from msds_comms_plotter import altair_charts as ac
-from msds_comms_plotter import worldcup
 
-PROCESSED = worldcup.PROJECT_ROOT / "data" / "processed"
-OUT = worldcup.PROJECT_ROOT / "reports" / "figures" / "wc2022_altair_gallery.html"
+# Write next to wherever you run this, NOT inside the installed package.
+OUT = Path.cwd() / "wc2022_altair_gallery.html"
 
 
 def _load():
-    """Return (goals, player_match_stats, shots), building any that aren't cached.
-
-    goals/stats come from processed parquet when present; shots have no parquet,
-    so they're always built from the cached event JSON.
-    """
-    goals_path = PROCESSED / "wc2022_goals.parquet"
-    stats_path = PROCESSED / "wc2022_player_match_stats.parquet"
-    if goals_path.exists() and stats_path.exists():
-        goals = pd.read_parquet(goals_path)
-        stats = pd.read_parquet(stats_path)
-    else:
-        print("Processed tables not found — building from the StatsBomb cache.")
-        print("(If this fails, unpack the raw data first: "
-              "tar -xJf data/raw/wc2022_raw.tar.xz -C data/raw)")
-        goals = worldcup.build_goal_events()
-        stats = worldcup.build_all()
-    return goals, stats, worldcup.build_shot_events()
+    """Return (goals, player_match_stats, shots) from the bundled sample data."""
+    from msds_comms_plotter import worldcup
+    return (worldcup.sample_goals(),
+            worldcup.sample_player_match_stats(),
+            worldcup.sample_shots())
 
 
 def build_gallery() -> alt.VConcatChart:
@@ -155,7 +137,6 @@ def _inject_color_controls(html: str) -> str:
 
 def main() -> None:
     gallery = build_gallery()
-    OUT.parent.mkdir(parents=True, exist_ok=True)
     try:  # inline=True embeds Vega JS so the file works offline, no server
         html = gallery.to_html(inline=True)
     except Exception:  # pragma: no cover - falls back to CDN-linked HTML
