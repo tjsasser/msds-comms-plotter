@@ -37,101 +37,125 @@ matplotlib figure and an interactive Altair chart look like siblings:
 
 ## Installation
 
-Requires **Python ≥ 3.9**.
+Requires **Python ≥ 3.9**. Always install into a **virtual environment (venv)**.
+A modern Python — including the Homebrew Python on macOS — is "externally
+managed" and will refuse a plain `pip install` with an
+`error: externally-managed-environment` (PEP 668). A venv sidesteps that
+entirely by giving the project its own isolated Python and `pip`, so you never
+touch the system install and never need `--break-system-packages` or `--user`.
 
-**Just want to use it?** Inside an activated virtual environment (see below),
-the package installs straight from PyPI — the World Cup sample data is bundled,
-so the charts work with no extra downloads:
+Two ways to install, depending on what you want:
+
+- **Section 1 — Install from PyPI and run an example.** For *using* the library.
+- **Section 2 — Clone the repo and run the examples from the clone.** For
+  *developing* it (editable install, regenerate figures, edit the source).
+
+> **Note — do not use `--break-system-packages`.** That flag (or a global
+> `pip install` outside a venv) writes into the system/Homebrew Python and can
+> corrupt it. The venv below is the safe, standard fix for the
+> `externally-managed-environment` error.
+
+### Section 1 — Install with pip and run an example
+
+Nothing to clone. The World Cup sample data and the example scripts are bundled
+inside the package, so the charts run with no extra downloads and no network.
+
+**1. Create and activate a venv** (in any folder you like):
 
 ```bash
-python -m pip install msds-comms-plotter          # add "[png]" for static PNG export
-python -c "from msds_comms_plotter import altair_charts as ac; ac.linked_scatter_passing().save('passing.html')"
+python3 -m venv .venv
+
+# Activate it — pick the line for your shell:
+source .venv/bin/activate          # macOS / Linux (bash, zsh)
+.venv\Scripts\Activate.ps1         # Windows (PowerShell)
+.venv\Scripts\activate.bat         # Windows (Command Prompt)
 ```
 
-The rest of this section covers a full **editable/dev** install from a clone.
-Either way, install into a **virtual environment (venv)**. This is the recommended (and on
-many systems, required) approach: a modern Python — including the Homebrew
-Python on macOS — is "externally managed" and will refuse a plain
-`pip install` with an `error: externally-managed-environment` (PEP 668). A venv
-sidesteps that entirely by giving the project its own isolated Python and
-`pip`, so you never touch the system install.
+Your prompt is now prefixed with `(.venv)`. You must re-activate in each new
+terminal session.
 
-### 1. Get the code
+**2. Install from PyPI** (add the `[png]` extra if you also want static PNGs):
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install msds-comms-plotter          # or "msds-comms-plotter[png]"
+```
+
+**3. Run an example.** The scripts ship inside the package, so you run them as
+modules — no file to download:
+
+```bash
+python -m msds_comms_plotter.examples.show_wc2022_charts
+```
+
+This writes a self-contained `wc2022_altair_gallery.html` to the folder you run
+it from and opens it in your browser. Two more example modules:
+
+```bash
+python -m msds_comms_plotter.examples.save_png            # -> ./passing_chart.png  (needs [png])
+python -m msds_comms_plotter.examples.use_your_own_data   # feed the chart your own data
+```
+
+**4. Verify (optional):**
+
+```bash
+python -c "from msds_comms_plotter import chartkit; print('chartkit OK', len(chartkit.PALETTE), 'colors')"
+# -> chartkit OK 8 colors
+```
+
+When you're done, leave the venv with `deactivate`.
+
+### Section 2 — Clone the repo and run the examples from the clone
+
+For development: an editable install (`-e`) so your source edits take effect
+without reinstalling, plus the full repo (raw data archive, notebooks,
+committed figures).
+
+**1. Get the code:**
 
 ```bash
 git clone https://github.com/tjsasser/msds-comms-plotter.git
 cd msds-comms-plotter
 ```
 
-### 2. Create the venv
-
-Run this once, from the repo root. It makes a `.venv/` folder holding a
-private copy of Python (`.venv/` is already covered by `.gitignore`).
+**2. Create and activate a venv** (from the repo root; `.venv/` is git-ignored):
 
 ```bash
 python3 -m venv .venv
+source .venv/bin/activate          # macOS / Linux  (Windows: see Section 1)
 ```
 
-### 3. Activate it
-
-You must activate the venv in **each new terminal session** before installing
-or running anything. Pick the line for your shell:
-
-```bash
-# macOS / Linux (bash, zsh)
-source .venv/bin/activate
-
-# Windows (PowerShell)
-.venv\Scripts\Activate.ps1
-
-# Windows (Command Prompt)
-.venv\Scripts\activate.bat
-```
-
-Once active, your prompt is prefixed with `(.venv)`. Confirm pip now points
-inside the venv (not the system Python):
+Confirm pip now points inside the venv:
 
 ```bash
 which pip     # macOS / Linux  -> .../msds-comms-plotter/.venv/bin/pip
 where pip     # Windows        -> ...\msds-comms-plotter\.venv\Scripts\pip.exe
 ```
 
-### 4. Install the package
-
-With the venv active, upgrade pip and install this project in editable mode
-(`-e`, so your source edits take effect without reinstalling). Because you're
-inside the venv, **no** `--break-system-packages` or `--user` flag is needed:
+**3. Install in editable mode** (add `".[png]"` for static PNG export):
 
 ```bash
 python -m pip install --upgrade pip
-python -m pip install -e .
+python -m pip install -e .          # or -e ".[png]"
 ```
 
-This pulls in every dependency automatically (see the table below).
-
-### 5. Verify
+**4. Run the examples.** The same module commands work against your checkout:
 
 ```bash
-python -c "from msds_comms_plotter import chartkit; print('chartkit OK', len(chartkit.PALETTE), 'colors')"
+python -m msds_comms_plotter.examples.show_wc2022_charts   # opens the gallery
+python -m msds_comms_plotter.examples.save_png
+python -m msds_comms_plotter.examples.use_your_own_data
 ```
 
-Expected output: `chartkit OK 8 colors`.
-
-### 6. When you're done
-
-Leave the venv with:
+Or regenerate every committed figure (`reports/figures/`) straight from the
+modules — they use the bundled data, so no raw-data unpack is needed:
 
 ```bash
-deactivate
+python -m msds_comms_plotter.altair_charts   # writes alt_*.html + alt_*.png
+python -m msds_comms_plotter.plots            # the matplotlib figures
 ```
 
-Next time you work on the project, just re-activate (step 3) — you don't need
-to recreate the venv or reinstall.
-
-> **Note — do not use `--break-system-packages`.** That flag (or a global
-> `pip install` outside a venv) writes into the system/Homebrew Python and can
-> corrupt it. The venv above is the safe, standard fix for the
-> `externally-managed-environment` error.
+When you're done, `deactivate`.
 
 ### Requirements
 
@@ -151,10 +175,12 @@ need them — so importing `chartkit` never fails just because one renderer is
 missing. Use the matplotlib half without Altair installed, or vice versa.
 
 **Optional — static PNG export.** Altair charts save as interactive `.html` out
-of the box. To also write `.png` files, install the extra:
+of the box. To also write `.png` files, add the `[png]` extra when you install
+(it pulls in `vl-convert-python`):
 
 ```bash
-python -m pip install -e ".[png]"   # adds vl-convert-python
+python -m pip install "msds-comms-plotter[png]"   # Section 1 (from PyPI)
+python -m pip install -e ".[png]"                 # Section 2 (editable clone)
 ```
 
 To register the JetBrains Mono font without a system-wide install, see
