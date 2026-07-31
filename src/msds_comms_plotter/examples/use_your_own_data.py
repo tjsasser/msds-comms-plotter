@@ -6,7 +6,7 @@
 Here we start from the bundled table and keep only high-volume passers, but you
 could read your own parquet/CSV with pandas instead.
 
-    python use_your_own_data.py   ->  ./passing_filtered.html
+    python -m msds_comms_plotter.examples.use_your_own_data   ->  ./passing_filtered.html
 """
 
 from pathlib import Path

@@ -282,8 +282,9 @@ and a horizon graph of shots-per-minute, and `plots` renders matplotlib figures
 of the same data.
 
 **Interactive — open the whole gallery in your browser (recommended).** The
-example script `examples/show_wc2022_charts.py` builds every chart, stacks them
-into one page, and opens it in your default web browser. Every chart has **hover
+example ships *inside* the installed package, so you run it as a module (no file
+to download). It builds every chart, stacks them into one page, and opens it in
+your default web browser. Every chart has **hover
 tooltips**; the **line and scatter charts also support zoom and pan**
 (scroll/drag) — the bar, histogram, and heatmap have categorical or binned axes
 where zoom isn't meaningful, so they're tooltip-only. The **linked brush** charts
@@ -298,7 +299,7 @@ single-hue bar/line/scatter/histogram, each taking a distinct slot of the scheme
 — and a **Heatmap** ramp (15 sequential schemes) for the heatmap.
 
 ```bash
-python examples/show_wc2022_charts.py
+python -m msds_comms_plotter.examples.show_wc2022_charts
 ```
 
 The example uses the World Cup data **bundled inside the installed package**, so
@@ -309,12 +310,16 @@ interactive offline — no server, no internet). Re-open that file any time
 without re-running. On a headless machine the script skips the browser and just
 prints the file path.
 
-Two more drop-in example scripts ship alongside it:
+Two more example modules ship alongside it:
 
 ```bash
-python examples/save_png.py           # -> ./passing_chart.png  (needs the [png] extra)
-python examples/use_your_own_data.py  # feed the chart your own DataFrame
+python -m msds_comms_plotter.examples.save_png           # -> ./passing_chart.png  (needs the [png] extra)
+python -m msds_comms_plotter.examples.use_your_own_data  # feed the chart your own DataFrame
 ```
+
+The scripts install with the package (under
+`msds_comms_plotter/examples/`), so you can also open or copy them from your
+site-packages if you want to adapt them.
 
 **Quickest — just look at the pre-rendered charts.** Individual charts are
 committed in `reports/figures/`. Open any `alt_*.html` in a browser for the
@@ -544,7 +549,7 @@ chart.save("chart.png", ppi=200)    # needs vl-convert-python (the [png] extra)
 To see them all together with the shared color pickers, run the gallery:
 
 ```bash
-python examples/show_wc2022_charts.py
+python -m msds_comms_plotter.examples.show_wc2022_charts
 ```
 
 ### Shortcut: just call the library
@@ -578,8 +583,9 @@ msds-comms-plotter/
 │   ├── chartkit.py       # matplotlib + Altair theming  ← documented above
 │   ├── altair_charts.py  # World Cup 2022 Altair charts (run as a module)
 │   ├── plots.py          # World Cup 2022 matplotlib figures
-│   └── worldcup.py       # dataset loading/paths
-├── examples/             # runnable examples (show_wc2022_charts.py opens a browser)
+│   ├── worldcup.py       # dataset loading/paths
+│   ├── data/             # bundled sample tables (ship in the wheel)
+│   └── examples/         # runnable example scripts (ship in the wheel)
 ├── data/                 # example datasets
 ├── docs/                 # dataset notes (see docs/wc2022_data.md)
 ├── notebooks/            # exploratory notebooks

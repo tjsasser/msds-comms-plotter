@@ -6,7 +6,8 @@ bundled inside ``msds_comms_plotter`` (no raw data, no network) and writes the
 output to the folder you run it from. Every chart has hover tooltips; the line
 and scatter charts also zoom and pan (scroll to zoom, drag to pan)::
 
-    python show_wc2022_charts.py   ->  ./wc2022_altair_gallery.html
+    python -m msds_comms_plotter.examples.show_wc2022_charts
+    #  ->  ./wc2022_altair_gallery.html  (opens in your browser)
 
 What it does:
 

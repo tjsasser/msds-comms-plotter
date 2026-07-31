@@ -3,7 +3,7 @@
 
 Needs the PNG extra:  pip install "msds-comms-plotter[png]"
 
-    python save_png.py   ->  ./passing_chart.png
+    python -m msds_comms_plotter.examples.save_png   ->  ./passing_chart.png
 """
 
 from pathlib import Path
